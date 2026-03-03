@@ -1,0 +1,1769 @@
+;;Cyber.kif - cybersecurity domain ontology
+;;author: jdev-02
+
+;; ============================================================
+;; SoftwareBug 
+;; ============================================================
+
+;; A bug is relational: it exists only with respect to some agent's
+;; specification of correct behavior.  The specifying agent is often
+;; but not always the author, it could be a standards body, a
+;; security policy, or a product owner.  The same code may be buggy
+;; from one specification's perspective but correct from another's,
+;; and may be buggy along multiple dimensions simultaneously (crash,
+;; security, performance, incorrect value, etc.).
+;;
+;; Separately, the agent who discovers a bug may differ from the
+;; agent who specified correctness (e.g., a white-hat hacker in a
+;; bug bounty program discovers bugs relative to the developer's spec).
+;;
+;; We therefore model SoftwareBug as a RelationalAttribute rather
+;; than a standalone class.  A program "has" the SoftwareBug attribute
+;; only relative to some agent's specification and some execution context.
+
+(subclass SoftwareBug RelationalAttribute)
+(termFormat EnglishLanguage SoftwareBug "software bug")
+(documentation SoftwareBug EnglishLanguage "A &%RelationalAttribute
+of a &%ComputerProgram indicating that the program contains a latent
+error relative to some &%AutonomousAgent's specification of correct
+behavior.  The specifying agent may be the program's author, a
+standards body, a security policy, or any stakeholder who defines
+what the program should do.  A &%SoftwareBug is relational because
+the same code may be correct with respect to one agent's specification
+but erroneous with respect to another's.  A program may also exhibit
+bugs along multiple dimensions simultaneously, such as crashes,
+security vulnerabilities, incorrect values, or poor performance.
+The agent who discovers a bug (see &%bugDiscoverer) need not be the
+same agent whose specification defines it as a bug.")
+
+;; ============================================================
+;; bugInProgram : relates bug-attribute to program and agent
+;; ============================================================
+
+;; Ternary: the bug exists in a program WITH RESPECT TO a specifying
+;; agent.  The specifying agent is whoever defines correct behavior 
+;; often the author, but could be a security standard, a product spec,
+;; or a client.  This is distinct from who discovers the bug.
+
+(instance bugInProgram TernaryPredicate)
+(domain bugInProgram 1 SoftwareBug)
+(domain bugInProgram 2 ComputerProgram)
+(domain bugInProgram 3 AutonomousAgent)
+(termFormat EnglishLanguage bugInProgram "bug in program")
+(format EnglishLanguage bugInProgram "%1 is a &%bug in %2 relative to %3")
+(documentation bugInProgram EnglishLanguage "(&%bugInProgram ?BUG ?PROG ?AGENT)
+means that ?BUG is a &%SoftwareBug present in ?PROG relative to the
+specification of correct behavior held by ?AGENT.  ?AGENT is the
+specifying agent — the one whose intent or specification defines
+what the program should do.  This may be the program's author, a
+standards body, a client, or any stakeholder.  The agent who
+discovers the bug may be a different party entirely (see
+&%bugDiscoverer).  The same program may have a bug with respect to
+one agent's specification but not another's.")
+
+;;rule: if a program has a bug relative to some agent, then the
+;; program carries that bug as an attribute
+
+(=>
+  (bugInProgram ?BUG ?PROG ?AGENT)
+  (attribute ?PROG ?BUG))
+
+;; ============================================================
+;; bugDiscoverer : who found the bug
+;; ============================================================
+
+;; The discovering agent is often different from the specifying agent.
+;; Examples: a white-hat hacker discovers a bug defined relative to
+;; the developer's spec; a QA tester discovers a bug defined relative
+;; to a product requirements document, which is a potentially unique agent than the original programmer.
+
+(instance bugDiscoverer TernaryPredicate)
+(domain bugDiscoverer 1 SoftwareBug)
+(domain bugDiscoverer 2 ComputerProgram)
+(domain bugDiscoverer 3 AutonomousAgent)
+(termFormat EnglishLanguage bugDiscoverer "bug discoverer")
+(format EnglishLanguage bugDiscoverer "%3 discovered &%bug %1 in %2")
+(documentation bugDiscoverer EnglishLanguage "(&%bugDiscoverer ?BUG ?PROG ?DISCOVERER)
+means that ?DISCOVERER identified &%SoftwareBug ?BUG in ?PROG.
+The discoverer need not be the same agent whose specification
+defines the bug (see &%bugInProgram).  For example, in a bug bounty
+program, an &%EthicalHacker discovers bugs relative to the
+developer's or organization's specification of correct behavior.")
+
+;; ============================================================
+;; EthicalHacker (White-Hat Hacker) : SocialRole
+;; ============================================================
+
+(instance EthicalHacker SocialRole)
+(termFormat EnglishLanguage EthicalHacker "ethical hacker")
+(documentation EthicalHacker EnglishLanguage "A &%SocialRole for an
+&%CognitiveAgent who identifies and responsibly discloses
+&%SoftwareBug instances and security vulnerabilities to the
+application's developer or owner, rather than exploiting them.
+Also known as a white-hat hacker.")
+
+;; rule: an ethical hacker who discovers a bug discloses it
+;; to the agent whose specification defines the bug
+;; (uses bugInProgram's specifier rather than programCreator,
+;; because programCreator uses domainSubclass for arg 2)
+
+(=>
+  (and
+    (attribute ?AGENT EthicalHacker)
+    (instance ?BUG SoftwareBug)
+    (instance ?PROG ComputerProgram)
+    (bugDiscoverer ?BUG ?PROG ?AGENT)
+    (bugInProgram ?BUG ?PROG ?SPECIFIER))
+  (exists (?DISCLOSURE)
+    (and
+      (instance ?DISCLOSURE Stating)
+      (agent ?DISCLOSURE ?AGENT)
+      (patient ?DISCLOSURE ?BUG)
+      (destination ?DISCLOSURE ?SPECIFIER))))
+
+;; ============================================================
+;; BlackHatHacker (SocialRole)
+;; ============================================================
+
+(instance BlackHatHacker SocialRole)
+(termFormat EnglishLanguage BlackHatHacker "black hat hacker")
+(documentation BlackHatHacker EnglishLanguage "A &%SocialRole for a
+&%CognitiveAgent who identifies &%SoftwareBug instances and
+&%Vulnerability instances in systems and exploits them for
+personal gain or malicious purposes rather than responsibly
+disclosing them.  Contrasted with &%EthicalHacker,  an agent
+may transition between these roles over time, but cannot hold
+both simultaneously.")
+
+;; ethical hacker and black hat hacker are mutually exclusive
+(contraryAttribute EthicalHacker BlackHatHacker)
+
+;; rule: a black hat who discovers a bug does NOT disclose
+;; it to the specifying agent 
+
+(=>
+  (and
+    (attribute ?AGENT BlackHatHacker)
+    (bugDiscoverer ?BUG ?PROG ?AGENT)
+    (bugInProgram ?BUG ?PROG ?SPECIFIER))
+  (not
+    (exists (?DISCLOSURE)
+      (and
+        (instance ?DISCLOSURE Stating)
+        (agent ?DISCLOSURE ?AGENT)
+        (patient ?DISCLOSURE ?BUG)
+        (destination ?DISCLOSURE ?SPECIFIER)))))
+
+;; ============================================================
+;; BugBountyProgram
+;; ============================================================
+
+(subclass BugBountyProgram Plan)
+(termFormat EnglishLanguage BugBountyProgram "bug bounty program")
+(documentation BugBountyProgram EnglishLanguage "A &%Plan established
+by an organization that invites &%EthicalHackers to discover and
+responsibly disclose &%SoftwareBug instances and security
+vulnerabilities in exchange for compensation.  This leverages the
+broader security community to improve a system's security posture
+over time.")
+
+;; rule: disclosure — the discoverer discloses (refers to) the bug to the org
+
+(=>
+  (and
+    (instance ?ORG Organization)
+    (instance ?PROGRAM BugBountyProgram)
+    (instance ?HACKER AutonomousAgent)
+    (instance ?BUG SoftwareBug)
+    (instance ?PROG ComputerProgram)
+    (agent ?PROGRAM ?ORG)
+    (attribute ?HACKER EthicalHacker)
+    (bugDiscoverer ?BUG ?PROG ?HACKER)
+    (bugInProgram ?BUG ?PROG ?ORG))
+  (exists (?DISCLOSURE)
+    (and
+      (instance ?DISCLOSURE Stating)
+      (agent ?DISCLOSURE ?HACKER)
+      (refers ?DISCLOSURE ?BUG)
+      (destination ?DISCLOSURE ?ORG))))
+
+;; rule: purpose — a bug bounty program's purpose is that bugs get
+;; discovered and disclosed
+
+(=>
+  (and
+    (instance ?PROGRAM BugBountyProgram)
+    (agent ?PROGRAM ?ORG)
+    (instance ?PROG ComputerProgram)
+    (possesses ?ORG ?PROG))
+  (hasPurpose ?PROGRAM
+    (exists (?BUG ?HACKER ?DISC)
+      (and
+        (instance ?BUG SoftwareBug)
+        (bugInProgram ?BUG ?PROG ?ORG)
+        (bugDiscoverer ?BUG ?PROG ?HACKER)
+        (instance ?DISC Stating)
+        (agent ?DISC ?HACKER)
+        (refers ?DISC ?BUG)
+        (destination ?DISC ?ORG)))))
+
+;; rule: desires — the organization desires that ethical hackers
+;; discover and disclose bugs
+
+(=>
+  (and
+    (instance ?PROGRAM BugBountyProgram)
+    (agent ?PROGRAM ?ORG)
+    (instance ?ORG Organization))
+  (desires ?ORG
+    (exists (?BUG ?PROG ?HACKER ?DISC)
+      (and
+        (instance ?BUG SoftwareBug)
+        (instance ?PROG ComputerProgram)
+        (bugInProgram ?BUG ?PROG ?ORG)
+        (attribute ?HACKER EthicalHacker)
+        (bugDiscoverer ?BUG ?PROG ?HACKER)
+        (instance ?DISC Stating)
+        (agent ?DISC ?HACKER)
+        (refers ?DISC ?BUG)
+        (destination ?DISC ?ORG)))))
+
+;; rule: causal chain — disclosure causes remediation (patching)
+
+(=>
+  (and
+    (instance ?PROGRAM BugBountyProgram)
+    (agent ?PROGRAM ?ORG)
+    (instance ?DISC Stating)
+    (instance ?BUG SoftwareBug)
+    (refers ?DISC ?BUG)
+    (destination ?DISC ?ORG)
+    (instance ?VUL Vulnerability)
+    (vulnerabilityCause ?BUG ?VUL))
+  (exists (?PATCH ?PROC)
+    (and
+      (instance ?PATCH SoftwarePatch)
+      (patchRemediates ?PATCH ?VUL)
+      (instance ?PROC ComputerProcess)
+      (programRunning ?PROC ?PATCH)
+      (causes ?DISC ?PROC))))
+
+;; ============================================================
+;; programCreator - subrelation of authors
+;; ============================================================
+
+;; programCreator is a specialization of
+;; the existing 'authors' predicate in Merge.kif.
+;; In Merge.kif, authors uses domainSubclass for arg 2, so programCreator
+;; narrows it to ComputerProgram specifically.
+;; authors relation for context is (authors ?AGENT ?TEXTCLASS)
+
+(subrelation programCreator authors)
+(instance programCreator BinaryPredicate)
+(domain programCreator 1 AutonomousAgent)
+(domainSubclass programCreator 2 ComputerProgram)
+(termFormat EnglishLanguage programCreator "program creator")
+(format EnglishLanguage programCreator "%1 is the &%creator of %2")
+(documentation programCreator EnglishLanguage "(&%programCreator ?AGENT ?PROGCLASS)
+means that ?AGENT is the author of all instances of ?PROGCLASS.
+This is a &%subrelation of &%authors specialized to &%ComputerProgram.")
+
+
+;; rule: if an organization employs a program creator,
+;; the organization is also a program creator
+
+(=>
+  (and
+    (programCreator ?PERSON ?PROGCLASS)
+    (employs ?ORG ?PERSON))
+  (programCreator ?ORG ?PROGCLASS))
+
+;; rule: temporal creation — a program creator wrote the program
+;; in a Writing process that is earlier than instances of that program
+
+(=>
+  (and
+    (programCreator ?AGENT ?PROGCLASS)
+    (instance ?PROG ?PROGCLASS))
+  (exists (?WRITING)
+    (and
+      (instance ?WRITING Writing)
+      (agent ?WRITING ?AGENT)
+      (result ?WRITING ?PROG)
+      (earlier (WhenFn ?WRITING) (WhenFn ?PROG)))))
+
+;; ============================================================
+;; programBehavior - expectedResult/actualResult
+;; ============================================================
+
+
+;; We model behavior as a relation between a program,
+;; its input, and the process of execution that produces output.
+;; Whether the output constitutes a "bug" depends on the agent's
+;; intent (captured by bugInProgram above). This must be modeled broadly
+;; as there are multi-modal inputs/outputs to computer programs.
+;; for example an input to a computer vision algorithm may be a dog
+
+(instance programBehavior TernaryPredicate)
+(domain programBehavior 1 ComputerProgram)
+(domain programBehavior 2 Entity)
+(domain programBehavior 3 Entity)
+(termFormat EnglishLanguage programBehavior "program behavior")
+(format EnglishLanguage programBehavior "%1 with input %2 produces output %3")
+(documentation programBehavior EnglishLanguage "(&%programBehavior ?PROG ?INPUT ?OUTPUT)
+means that when ?PROG is executed with ?INPUT, it produces ?OUTPUT.
+Whether ?OUTPUT constitutes correct behavior depends on the intent
+of the agent, which is captured separately via &%bugInProgram.")
+
+;; intendedBehavior: what an agent expects a program to do given input
+;; This is agent-relative, addressing a non-deterministic concern.
+
+(instance intendedBehavior TernaryPredicate)
+(domain intendedBehavior 1 ComputerProgram)
+(domain intendedBehavior 2 Entity)
+(domain intendedBehavior 3 AutonomousAgent)
+(termFormat EnglishLanguage intendedBehavior "intended behavior")
+(format EnglishLanguage intendedBehavior "%3 intends %1 to produce %2")
+(documentation intendedBehavior EnglishLanguage "(&%intendedBehavior ?PROG ?OUTPUT ?AGENT)
+means that ?AGENT specifies that ?PROG should produce ?OUTPUT.
+?AGENT is the specifying agent : the author, standards body, client,
+or other stakeholder whose definition of correct behavior is
+relevant.  For non-deterministic programs (e.g., an LLM), the
+intended output may be a class of acceptable outputs rather than a
+single value, and an unexpected result may still be desirable.")
+
+;; rule: a bug exists when actual behavior diverges from intended
+;; behavior for a given agent as the perceptor of that bug
+
+(=>
+  (and
+    (instance ?PROG ComputerProgram)
+    (programBehavior ?PROG ?INPUT ?ACTUAL)
+    (intendedBehavior ?PROG ?INTENDED ?AGENT)
+    (not (equal ?ACTUAL ?INTENDED)))
+  (exists (?BUG)
+    (and
+      (instance ?BUG SoftwareBug)
+      (bugInProgram ?BUG ?PROG ?AGENT))))
+
+
+;; ============================================================
+;; SoftwarePatch
+;; ============================================================
+
+(subclass SoftwarePatch ComputerProgram)
+(termFormat EnglishLanguage SoftwarePatch "software patch")
+(documentation SoftwarePatch EnglishLanguage "A &%ComputerProgram
+designed to update, fix, or improve another program, typically
+to address a &%SoftwareBug or &%Vulnerability.")
+
+;; rule: when a patch runs and remediates a vulnerability,
+;; a Removing process occurs
+
+(=>
+  (and
+    (instance ?PATCH SoftwarePatch)
+    (patchRemediates ?PATCH ?VUL)
+    (instance ?PROC ComputerProcess)
+    (programRunning ?PROC ?PATCH))
+  (exists (?REMOVE)
+    (and
+      (instance ?REMOVE Removing)
+      (agent ?REMOVE ?PATCH)
+      (patient ?REMOVE ?VUL))))
+
+;; rule: purpose — a SoftwarePatch has the purpose of remediating
+;; a Vulnerability or fixing a SoftwareBug
+
+(=>
+  (instance ?PATCH SoftwarePatch)
+  (hasPurpose ?PATCH
+    (exists (?TARGET ?PROG)
+      (and
+        (instance ?PROG ComputerProgram)
+        (or
+          (and
+            (instance ?TARGET Vulnerability)
+            (attribute ?PROG ?TARGET))
+          (and
+            (instance ?TARGET SoftwareBug)
+            (exists (?AGENT)
+              (bugInProgram ?TARGET ?PROG ?AGENT))))))))
+
+;; NOTE: The temporal holdsDuring rule for patch remediation is in the
+;; patchRemediates section below (with proper antecedent precondition).
+        
+;; ============================================================
+;; Environment Attributes
+;; ============================================================
+
+(instance ProductionEnvironment Attribute)
+(termFormat EnglishLanguage ProductionEnvironment "production environment")
+(documentation ProductionEnvironment EnglishLanguage "An &%Attribute
+indicating that a &%Computer or system is used for live operations
+serving end users or critical business functions.")
+
+;;rule : if a computer is in production envionment, theres an agent which has a computer
+;;running processes on that producition environment computer.
+
+(=>
+    (and
+      (instance ?COMP Computer)
+      (attribute ?COMP ProductionEnvironment))
+    (exists (?USER ?PROCESS)
+      (and
+        (instance ?USER CognitiveAgent)
+        (instance ?PROCESS ComputerProcess)
+        (computerRunning ?PROCESS ?COMP)
+        (uses ?PROCESS ?USER))))
+     
+
+(instance TestEnvironment Attribute)
+(termFormat EnglishLanguage TestEnvironment "test environment")
+(documentation TestEnvironment EnglishLanguage "An &%Attribute
+indicating that a &%Computer or system is used for testing and
+validation before deployment to production.")
+
+;;the same computer cannot carry both attributes of prod/test simultaneously
+(contraryAttribute ProductionEnvironment TestEnvironment)
+
+;; rule: a test environment has no end-user processes — if a computer
+;; is a test environment, no CognitiveAgent uses it for production work
+
+(=>
+  (and
+    (instance ?COMP Computer)
+    (attribute ?COMP TestEnvironment))
+  (not
+    (exists (?USER ?PROC)
+      (and
+        (instance ?USER CognitiveAgent)
+        (instance ?PROC ComputerProcess)
+        (computerRunning ?PROC ?COMP)
+        (agent ?PROC ?USER)))))
+
+;; rule: if software runs in production, a test environment must exist
+;; (but not vice versa — you can have test without production)
+
+(=>
+  (and
+    (instance ?PROD Computer)
+    (attribute ?PROD ProductionEnvironment)
+    (instance ?PROC ComputerProcess)
+    (computerRunning ?PROC ?PROD)
+    (instance ?SOFTWARE ComputerProgram)
+    (programRunning ?PROC ?SOFTWARE))
+  (exists (?TEST)
+    (and
+      (instance ?TEST Computer)
+      (attribute ?TEST TestEnvironment))))
+
+;programValidated: patch was tested in test environment
+
+(instance programValidated BinaryPredicate)
+(domain programValidated 1 SoftwarePatch)
+(domain programValidated 2 Computer)
+(termFormat EnglishLanguage programValidated "program validated")
+(format EnglishLanguage programValidated "%1 has been &%validated on %2")
+(documentation programValidated EnglishLanguage "(&%programValidated ?PATCH ?COMP)
+means that ?PATCH has been validated on ?COMP.")
+
+;meso-layer policy rule for cybersecurity proposed in HotSOS 2026 paper submission:
+; patches must be validated in test before production
+
+(=>
+  (and
+    (instance ?PATCH SoftwarePatch)
+    (attribute ?PROD_COMP ProductionEnvironment)
+    (holdsDuring ?T_NOW
+      (computerRunning ?PROC ?PROD_COMP))
+    (programRunning ?PROC ?PATCH))
+  (exists (?T_PAST ?TEST_COMP)
+    (and
+      (attribute ?TEST_COMP TestEnvironment)
+      (earlier ?T_PAST ?T_NOW)
+      (holdsDuring ?T_PAST
+        (programValidated ?PATCH ?TEST_COMP)))))
+
+;; ============================================================
+;; Cyber Resource Predicates
+;; ============================================================
+
+;computer capacity : max throughput of a computing device
+
+(subrelation computerCapacity capacity)
+(domain computerCapacity 1 Computer)
+(domain computerCapacity 2 Quantity)
+(termFormat EnglishLanguage computerCapacity "computer capacity")
+(format EnglishLanguage computerCapacity "%1 has a maximum &%capacity of %2")
+(documentation computerCapacity EnglishLanguage "(&%computerCapacity ?DEVICE ?MAX)
+means that ?DEVICE has a maximum instruction or bandwidth
+capability of ?MAX.")
+
+;; OverCapacity — when load exceeds rated capacity
+
+(instance OverCapacity Attribute)
+(termFormat EnglishLanguage OverCapacity "over capacity")
+(documentation OverCapacity EnglishLanguage "An &%Attribute indicating
+that a &%Computer has a &%ComputerProcess whose &%computationalDemand
+exceeds the computer's rated &%computerCapacity.")
+
+;; rule: if any process on a computer exceeds its capacity,
+;; the computer is over capacity
+
+(=>
+  (and
+    (instance ?COMP Computer)
+    (computerCapacity ?COMP ?MAX)
+    (instance ?PROC ComputerProcess)
+    (computerRunning ?PROC ?COMP)
+    (computationalDemand ?PROC ?COMP ?LOAD)
+    (greaterThan ?LOAD ?MAX))
+  (attribute ?COMP OverCapacity))
+
+;computationalDemand : defines the computational load a process places on a system
+
+(instance computationalDemand TernaryPredicate)
+(domain computationalDemand 1 ComputerProcess)
+(domain computationalDemand 2 ComputationalSystem)
+(domain computationalDemand 3 Quantity)
+(termFormat EnglishLanguage computationalDemand "computational demand")
+(format EnglishLanguage computationalDemand "%1 places a &%computational demand of %3 on %2")
+(documentation computationalDemand EnglishLanguage "(&%computationalDemand
+?PROC ?SYSTEM ?LOAD) means that ?PROC places a computational load of
+?LOAD on ?SYSTEM.  Broader than device-specific metrics — applies to any
+&%ComputationalSystem including networks, servers, and clusters.")
+
+;adversarial knapsack constraint : combined resource load cannot exceed capacity
+
+;; rule: causal consequence — if a computer is over capacity,
+;; this causes a Malfunctioning process on that computer
+
+(=>
+  (and
+    (instance ?COMP Computer)
+    (attribute ?COMP OverCapacity)
+    (instance ?PROC ComputerProcess)
+    (computerRunning ?PROC ?COMP))
+  (exists (?FAIL)
+    (and
+      (instance ?FAIL Malfunctioning)
+      (patient ?FAIL ?COMP)
+      (causes ?PROC ?FAIL))))
+
+
+(=>
+  (and
+    (instance ?H Computer)
+    (capacity ?H ?Wd)
+    (instance ?P1 ComputerProcess)
+    (instance ?P2 ComputerProcess)
+    (not (equal ?P1 ?P2))
+    (holdsDuring ?T
+      (computerRunning ?P1 ?H))
+    (holdsDuring ?T
+      (computerRunning ?P2 ?H))
+    (computationalDemand ?P1 ?H ?W1)
+    (computationalDemand ?P2 ?H ?W2))
+  (not
+    (greaterThan
+      (AdditionFn ?W1 ?W2)
+      ?Wd)))
+
+;; ============================================================
+;; Financial Predicates
+;; ============================================================
+
+;valuation - economic value of an asset
+
+(instance valuation TernaryPredicate)
+(domain valuation 1 Physical)
+(domain valuation 2 CurrencyMeasure)
+(domain valuation 3 CognitiveAgent)
+(termFormat EnglishLanguage valuation "valuation")
+(format EnglishLanguage valuation "%1 has a &%valuation of %2 as assessed by %3")
+(documentation valuation EnglishLanguage "(&%valuation ?ASSET ?VALUE ?ASESSOR)
+means that ?ASSET has an economic value of ?VALUE from the perspective of the Entity assessing it.")
+
+;; rule: if an asset has value and someone owns it,
+;; it is a financial asset of that owner
+
+(=>
+  (and
+    (valuation ?ASSET ?VALUE ?ASSESSOR)
+    (possesses ?OWNER ?ASSET))
+  (financialAsset ?OWNER ?ASSET))
+
+;; ============================================================
+;; DefensiveStrategy
+;; ============================================================
+
+;; FIX NEEDED: (subclass DefensiveStrategy Strategy) references
+;; Strategy, but Strategy doesn't exist in SUMO.
+;; CounterTerrorismStrategy in MilitaryProcesses.kif uses OperationPlan.
+;; Options:
+;;   (a) (subclass DefensiveStrategy Plan) — generic
+;;   (b) (subclass DefensiveStrategy OperationPlan) — military alignment
+;;   (c) Define (subclass Strategy Plan) yourself — general concept
+;; Pick one and replace the line below.
+
+(subclass DefensiveStrategy Plan)
+(termFormat EnglishLanguage DefensiveStrategy "defensive strategy")
+(documentation DefensiveStrategy EnglishLanguage "A &%Plan
+employed by a defender to protect assets from adversarial actions,
+subject to budget and resource constraints in an organization.")
+
+;; rule: purpose — a DefensiveStrategy has the purpose of preventing
+;; CyberAttacks on the defender's assets
+
+(=>
+  (and
+    (instance ?STRAT DefensiveStrategy)
+    (agent ?STRAT ?DEFENDER)
+    (instance ?ASSET Object)
+    (possesses ?DEFENDER ?ASSET))
+  (hasPurpose ?STRAT
+    (exists (?DEF)
+      (and
+        (instance ?DEF Process)
+        (agent ?DEF ?DEFENDER)
+        (prevents ?DEF CyberAttack)))))
+
+;; rule: subProcess — executing a DefensiveStrategy involves
+;; patching vulnerabilities as subprocesses
+
+(=>
+  (and
+    (instance ?STRAT DefensiveStrategy)
+    (agent ?STRAT ?DEFENDER)
+    (instance ?EXEC Process)
+    (subProcess ?EXEC ?STRAT)
+    (instance ?SYSTEM Computer)
+    (possesses ?DEFENDER ?SYSTEM)
+    (instance ?VUL Vulnerability)
+    (attribute ?SYSTEM ?VUL))
+  (exists (?PATCH ?PROC)
+    (and
+      (instance ?PATCH SoftwarePatch)
+      (patchRemediates ?PATCH ?VUL)
+      (instance ?PROC ComputerProcess)
+      (programRunning ?PROC ?PATCH)
+      (subProcess ?PROC ?STRAT))))
+
+;; ============================================================
+;; authorizedAccess (BinaryPredicate)
+;; ============================================================
+
+(instance authorizedAccess BinaryPredicate)
+(domain authorizedAccess 1 CognitiveAgent)
+(domain authorizedAccess 2 Object)
+(termFormat EnglishLanguage authorizedAccess "authorized access")
+(format EnglishLanguage authorizedAccess "%1 has &%authorized access to %2")
+(documentation authorizedAccess EnglishLanguage "(&%authorizedAccess
+?AGENT ?SYSTEM) means that ?AGENT has been granted permission by
+the owner of ?SYSTEM to access it.")
+
+;; rule: authorization comes from the system owner via explicit grant
+
+(=>
+  (authorizedAccess ?AGENT ?SYSTEM)
+  (exists (?GRANT ?OWNER)
+    (and
+      (instance ?GRANT Stating)
+      (agent ?GRANT ?OWNER)
+      (possesses ?OWNER ?SYSTEM)
+      (patient ?GRANT ?AGENT))))
+
+;; ============================================================
+;; ProprietaryData (Attribute)
+;; ============================================================
+
+(instance ProprietaryData Attribute)
+(termFormat EnglishLanguage ProprietaryData "proprietary data")
+(documentation ProprietaryData EnglishLanguage "An &%Attribute of a
+&%Proposition or data asset indicating that its value is derived
+partly from restricted access.  The fewer &%CognitiveAgents who
+&%knows the information, the greater its value to the possessor.
+Distinct from physical assets whose value is independent of who
+knows about them.")
+
+;; rule: the purpose of a defensive strategy is preventing
+;; unauthorized data transfer on the defender's assets
+
+(=>
+  (and
+    (instance ?DS DefensiveStrategy)
+    (agent ?DS ?DEFENDER)
+    (financialAsset ?DEFENDER ?SYSTEM))
+  (hasPurpose ?DS
+    (not
+      (exists (?AGENT ?ACCESS)
+        (and
+          (instance ?ACCESS DataTransfer)
+          (agent ?ACCESS ?AGENT)
+          (patient ?ACCESS ?SYSTEM)
+          (not (equal ?AGENT ?DEFENDER))
+          (not (authorizedAccess ?AGENT ?SYSTEM)))))))
+
+;; rule: unauthorized access to proprietary data decreases
+;; the asset's valuation (information scarcity erosion)
+
+(=>
+  (and
+    (financialAsset ?OWNER ?SYSTEM)
+    (attribute ?DATA ProprietaryData)
+    (holdsDuring ?T1 (valuation ?SYSTEM ?V1 ?OWNER))
+    (instance ?ACCESS DataTransfer)
+    (agent ?ACCESS ?THIEF)
+    (patient ?ACCESS ?SYSTEM)
+    (not (authorizedAccess ?THIEF ?SYSTEM))
+    (holdsDuring ?T2 (knows ?THIEF (attribute ?DATA ProprietaryData)))
+    (before ?T1 ?T2))
+  (exists (?V2)
+    (and
+      (holdsDuring ?T2 (valuation ?SYSTEM ?V2 ?OWNER))
+      (lessThan ?V2 ?V1))))
+
+;; ============================================================
+;;
+;;  VULNERABILITY CLUSTER
+;;
+;;  What follows are pseudocode templates for defining the
+;;  Vulnerability concept family and the Adversarial Knapsack
+;;  formalism.  Each section follows the term validation
+;;  mental model:
+;;
+;;    Step 0 — WHY: what inference does this term enable?
+;;    Step 1 — SEARCH: does this already exist in SUMO?
+;;    Step 2 — JUSTIFY: can existing terms express this?
+;;    Step 3 — CLASSIFY: class, instance, predicate, attribute?
+;;    Step 4 — PARENT: where does it sit in the hierarchy?
+;;    Step 5 — DEFINE: write the KIF (documentation, domain/range,
+;;             rules, constraints)
+;;    Step 6 — PROVE: test with Vampire
+;;
+;;  Write your KIF where it says YOUR KIF GOES HERE.
+;;  When done, delete the pseudocode comments.
+;;
+;; ============================================================
+  
+
+;; ============================================================
+;; 1. Vulnerability (RelationalAttribute)
+;; ============================================================
+;;
+;; STEP 0 — WHY: "If a system has a misconfiguration and an
+;;   adversary has the resources to exploit it, the prover should
+;;   conclude that system has a vulnerability with respect to
+;;   that adversary.  But the same misconfiguration is NOT a
+;;   vulnerability with respect to an agent who lacks the
+;;   resources."  This is the foundation for the entire
+;;   Adversarial Knapsack: vulnerabilities are the items in H.
+;;
+;; STEP 1 — SEARCH: SUMO has no Vulnerability class.
+;;   QoSontology.kif has nothing.  MilitaryProcesses.kif has
+;;   Attack/Maneuver but those are kinetic.  
+;;
+;; STEP 2 — JUSTIFY: SoftwareBug is close but distinct.  Not
+;;   every bug is a vulnerability (UI glitch) and not every
+;;   vulnerability originates from a bug (weak default password
+;;   is a configuration issue).  New term justified.
+;;
+;; STEP 3 — CLASSIFY: It's a quality a system has — but only
+;;   relative to an agent's capability to exploit it.  Same
+;;   pattern as SoftwareBug.  => RelationalAttribute.
+;;
+;; STEP 4 — PARENT: (subclass Vulnerability RelationalAttribute)
+;;
+;; STEP 5 — DEFINE:
+;;   parent class: RelationalAttribute
+;;   doc: A RelationalAttribute of a system (ComputerNetwork,
+;;        Computer, ComputerProgram, or other artifact) indicating
+;;        a weakness that could be exploited by an AutonomousAgent
+;;        with sufficient resources.  Relational because the same
+;;        flaw may be exploitable by one agent but not another
+;;        depending on their resource set (compute, expertise,
+;;        time, tooling).  Vulnerabilities are latent — they exist
+;;        whether or not any agent has discovered them.
+;;        Distinct from SoftwareBug: not every bug is a
+;;        vulnerability, and not every vulnerability originates
+;;        from a bug.
+;;
+;; STEP 6 — PROVE: write a mini TPTP test asserting a
+;;   misconfiguration is exploitable by one agent but not
+;;   another, then verify attribute assignment.
+
+(subclass Vulnerability RelationalAttribute)
+(termFormat EnglishLanguage Vulnerability "vulnerability")
+(documentation Vulnerability EnglishLanguage "A &%RelationalAttribute of a system (&%ComputerNetwork,
+&%Computer, &%ComputerProgram, or other &%Entity) indicating a weakness
+that could be exploited by an &%AutonomousAgent with sufficient resources.
+Relational because the same flaw may be exploitable by one agent but not another
+depending on their resource set (compute, expertise, time, tooling).
+Vulnerabilities are latent, meaning they exist whether or not any &%AutonomousAgent
+has discovered them. Distinct from &%SoftwareBug: not every bug is a
+vulnerability, and not every vulnerability originates from a bug.")
+
+;; Vulnerability and SoftwareBug are distinct classes
+;; (no instance can be both)
+(disjoint Vulnerability SoftwareBug)
+
+;; ============================================================
+;; vulnerabilityCause (BinaryPredicate)
+;; ============================================================
+;; Needed because SUMO's existing 'causes' relation requires both
+;; arguments to be Process, but SoftwareBug and Vulnerability
+;; are RelationalAttribute, not processes.
+
+(instance vulnerabilityCause BinaryPredicate)
+(domain vulnerabilityCause 1 Entity)
+(domain vulnerabilityCause 2 Vulnerability)
+(termFormat EnglishLanguage vulnerabilityCause "vulnerability cause")
+(format EnglishLanguage vulnerabilityCause "%1 is a &%cause of vulnerability %2")
+(documentation vulnerabilityCause EnglishLanguage "(&%vulnerabilityCause
+?CAUSE ?VUL) means that ?CAUSE (a &%SoftwareBug, misconfiguration,
+design flaw, or other &%Entity) gives rise to &%Vulnerability ?VUL.
+Needed because SUMO's existing &%causes relation requires both
+arguments to be &%Process, but &%SoftwareBug and &%Vulnerability
+are &%RelationalAttribute, not processes.")
+
+;; rule: not all vulnerabilities originate from bugs
+;; (weak default passwords, misconfigurations, design flaws)
+
+(exists (?VULN)
+  (and
+    (instance ?VULN Vulnerability)
+    (not
+      (exists (?BUG)
+        (and
+          (instance ?BUG SoftwareBug)
+          (vulnerabilityCause ?BUG ?VULN))))))
+
+;; rule: if a bug causes a vulnerability in a program,
+;; the program carries that vulnerability as an attribute
+
+(=>
+  (and
+    (instance ?BUG SoftwareBug)
+    (bugInProgram ?BUG ?PROG ?AGENT)
+    (instance ?VUL Vulnerability)
+    (vulnerabilityCause ?BUG ?VUL))
+  (attribute ?PROG ?VUL))
+
+;; rule: temporal persistence — while the cause persists, the
+;; vulnerability persists.  If the cause holds during an interval,
+;; the vulnerability attribute holds during that same interval.
+
+(=>
+  (and
+    (instance ?VUL Vulnerability)
+    (vulnerabilityCause ?CAUSE ?VUL)
+    (instance ?PROG ComputerProgram)
+    (attribute ?PROG ?VUL)
+    (holdsDuring ?T (attribute ?PROG ?CAUSE)))
+  (holdsDuring ?T (attribute ?PROG ?VUL)))
+
+;; ============================================================
+;; 2. vulnerableSystem (TernaryPredicate)
+;; ============================================================
+;; Mirrors the bugInProgram pattern — the core relational assertion.
+;; ModSim.kif has VulnerableNetwork but it has a variable-shadowing
+;; bug (inner ?CN shadows outer ?CN).  This is the clean version.
+
+(instance vulnerableSystem TernaryPredicate)
+(domain vulnerableSystem 1 Vulnerability)
+(domain vulnerableSystem 2 Entity)
+(domain vulnerableSystem 3 AutonomousAgent)
+(termFormat EnglishLanguage vulnerableSystem "vulnerable system")
+(format EnglishLanguage vulnerableSystem "%2 has vulnerability %1 exploitable by %3")
+(documentation vulnerableSystem EnglishLanguage "(&%vulnerableSystem
+?VUL ?SYSTEM ?AGENT) means that ?SYSTEM has &%Vulnerability ?VUL
+that is exploitable by ?AGENT given ?AGENT's current resource set.
+Relational because the same flaw may be exploitable by one agent
+but not another depending on their capabilities.")
+
+;; rule: if a system is vulnerable, it carries the vulnerability as attribute
+
+(=>
+  (vulnerableSystem ?VUL ?SYSTEM ?AGENT)
+  (attribute ?SYSTEM ?VUL))
+
+
+
+;; ============================================================
+;; 3. hazardScore (BinaryPredicate)
+;; ============================================================
+;;
+;; STEP 0 — WHY: "The prover needs to compare the damage
+;;   potential of different vulnerabilities to verify that a
+;;   strategy's total defended hazard is maximized within budget."
+;;   This is H_i from Paper 02 Table 1 — the "value" dimension
+;;   of the knapsack.  Common information: both attacker and
+;;   defender know it (like CVSS scores).
+;;
+;; STEP 1 — SEARCH: No hazard scoring predicate in SUMO.
+;;   valuation (already in Cyber.kif) is for economic asset value,
+;;   not vulnerability damage potential.
+;;
+;; STEP 3 — CLASSIFY: Maps a vulnerability to a number.
+;;   Answers a value, not yes/no — but in SUMO predicates can
+;;   bind numeric args.  => BinaryPredicate.
+;;
+;; STEP 5 — DEFINE:
+;;   type: BinaryPredicate
+;;   arg1 (domain 1): Vulnerability
+;;   arg2 (domain 2): RealNumber  (or PositiveRealNumber)
+;;   doc: (hazardScore ?VUL ?SCORE) means ?VUL has a hazard score
+;;        of ?SCORE, representing potential damage if exploited.
+;;        Common information — assessable by both attacker and
+;;        defender.  Corresponds to H_i in the adversarial
+;;        knapsack formulation (Paper 02, Section 3.2).
+
+(instance hazardScore BinaryPredicate)
+(domain hazardScore 1 Vulnerability)
+(domain hazardScore 2 RealNumber)
+(termFormat EnglishLanguage hazardScore "hazard score")
+(format EnglishLanguage hazardScore "%1 has a &%hazard score of %2")
+(documentation hazardScore EnglishLanguage "(&%hazardScore ?VUL ?SCORE)
+means that &%Vulnerability ?VUL has a hazard score of ?SCORE,
+representing the potential damage if exploited.  This is common
+information assessable by both attacker and defender, analogous to
+a CVSS score.  Higher values indicate greater potential impact.")
+
+;; rule: a hazard score is non-negative
+
+(=>
+  (hazardScore ?VUL ?SCORE)
+  (greaterThanOrEqualTo ?SCORE 0))
+
+;; rule: causal implication — if a vulnerability with a hazard score
+;; is exploited, the exploit causes Damaging to the affected system
+
+(=>
+  (and
+    (instance ?VUL Vulnerability)
+    (hazardScore ?VUL ?SCORE)
+    (greaterThan ?SCORE 0)
+    (instance ?EXPLOIT CyberExploit)
+    (instance ?SYSTEM Computer)
+    (attribute ?SYSTEM ?VUL)
+    (patient ?EXPLOIT ?SYSTEM))
+  (exists (?DMG)
+    (and
+      (instance ?DMG Damaging)
+      (patient ?DMG ?SYSTEM)
+      (causes ?EXPLOIT ?DMG))))
+
+
+;; ============================================================
+;; 4. exploitCost (TernaryPredicate)
+;; ============================================================
+;;
+;; STEP 0 — WHY: "The prover needs to verify that the sum of
+;;   exploit costs for the attacker's selected vulnerabilities
+;;   does not exceed the attacker's operational budget W_a."
+;;   This is d_i(x) = B_i + M_i from Paper 02 Section 3.2.
+;;   Agent-relative: an agent with existing tooling for a
+;;   vulnerability class pays less than one developing from
+;;   scratch.
+;;
+;; STEP 1 — SEARCH: computationalDemand (already in Cyber.kif) is
+;;   device-level (process load on a ComputationalSystem).
+;;   financialCost is process-level (dollar cost of a process).
+;;   Neither captures the agent-relative cost of exploiting a
+;;   specific vulnerability.  New term needed.
+;;
+;; STEP 3 — CLASSIFY: Connects three things (vul, agent, cost)
+;;   => TernaryPredicate.
+;;
+;; STEP 5 — DEFINE:
+;;   type: TernaryPredicate
+;;   arg1 (domain 1): Vulnerability
+;;   arg2 (domain 2): AutonomousAgent
+;;   arg3 (domain 3): CurrencyMeasure (or RealNumber)
+;;   doc: (exploitCost ?VUL ?AGENT ?COST) means it costs ?AGENT
+;;        ?COST in resources to exploit ?VUL.  Encompasses tooling
+;;        cost (B_i), scaling cost (M_i), compute, expertise/time,
+;;        and operational overhead.  Agent-relative.
+
+(instance exploitCost TernaryPredicate)
+(domain exploitCost 1 Vulnerability)
+(domain exploitCost 2 AutonomousAgent)
+(domain exploitCost 3 CurrencyMeasure)
+(termFormat EnglishLanguage exploitCost "exploit cost")
+(format EnglishLanguage exploitCost "exploiting %1 costs %2 an amount of %3")
+(documentation exploitCost EnglishLanguage "(&%exploitCost ?VUL ?AGENT
+?COST) means that it costs ?AGENT an amount of ?COST to exploit
+&%Vulnerability ?VUL.  Encompasses tooling acquisition, scaling effort,
+compute resources, expertise, and operational overhead.  Agent-relative:
+an agent with existing tooling for a vulnerability class pays less
+than one developing capabilities from scratch.")
+
+;; rule: if an agent performs a CyberExploit targeting a vulnerability,
+;; the exploit's resource expenditure equals the exploitCost
+
+(=>
+  (and
+    (instance ?EXPLOIT CyberExploit)
+    (agent ?EXPLOIT ?AGENT)
+    (patient ?EXPLOIT ?SYSTEM)
+    (targets ?EXPLOIT ?VUL)
+    (exploitCost ?VUL ?AGENT ?COST))
+  (exists (?SPEND)
+    (and
+      (instance ?SPEND FinancialTransaction)
+      (agent ?SPEND ?AGENT)
+      (transactionAmount ?SPEND ?COST))))
+
+
+;; ============================================================
+;; 5. patchCost (TernaryPredicate)
+;; ============================================================
+;;
+;; STEP 0 — WHY: "The prover needs to verify that the sum of
+;;   patch costs for the defender's selected vulnerabilities
+;;   does not exceed the defender's operational budget W_d."
+;;   This is C_i(x) = b_i + m_i*x from Paper 02 Section 3.2.
+;;   Agent-relative for the same reasons as exploitCost.
+;;
+;; STEP 1 — SEARCH: financialCost maps Process to
+;;   CurrencyMeasure but is not vulnerability-specific or
+;;   agent-relative.  New term needed.
+;;
+;; STEP 3 — CLASSIFY: Connects three things
+;;   => TernaryPredicate.
+;;
+;; STEP 5 — DEFINE:
+;;   type: TernaryPredicate
+;;   arg1 (domain 1): Vulnerability
+;;   arg2 (domain 2): AutonomousAgent
+;;   arg3 (domain 3): CurrencyMeasure (or RealNumber)
+;;   doc: (patchCost ?VUL ?AGENT ?COST) means it costs ?AGENT
+;;        ?COST to patch (remediate) ?VUL.  Includes development,
+;;        testing, and deployment overhead.  Corresponds to
+;;        C_i(x) = b_i + m_i*x from Paper 02.  Agent-relative.
+
+(instance patchCost TernaryPredicate)
+(domain patchCost 1 Vulnerability)
+(domain patchCost 2 AutonomousAgent)
+(domain patchCost 3 CurrencyMeasure)
+(termFormat EnglishLanguage patchCost "patch cost")
+(format EnglishLanguage patchCost "patching %1 costs %2 an amount of %3")
+(documentation patchCost EnglishLanguage "(&%patchCost ?VUL ?AGENT ?COST)
+means that it costs ?AGENT an amount of ?COST to patch or remediate
+&%Vulnerability ?VUL.  Includes development, testing, deployment, and
+any operational disruption overhead.  Agent-relative: an organization
+with mature patch management pays less than one building remediation
+capability from scratch.")
+
+;; rule: if an agent applies a patch that remediates a vulnerability,
+;; the remediation's resource expenditure equals the patchCost
+
+(=>
+  (and
+    (instance ?PATCH SoftwarePatch)
+    (patchRemediates ?PATCH ?VUL)
+    (instance ?DEPLOY IntentionalProcess)
+    (agent ?DEPLOY ?AGENT)
+    (result ?DEPLOY ?PATCH)
+    (patchCost ?VUL ?AGENT ?COST))
+  (exists (?SPEND)
+    (and
+      (instance ?SPEND FinancialTransaction)
+      (agent ?SPEND ?AGENT)
+      (transactionAmount ?SPEND ?COST))))
+
+
+;; ============================================================
+;; 6. CyberExploit (subclass of IntentionalProcess)
+;; ============================================================
+;;
+;; STEP 0 — WHY: "If an agent leverages a vulnerability in a
+;;   system, the prover should conclude that a CyberExploit
+;;   process occurred AND that the system had a vulnerability
+;;   exploitable by that agent.  A pentester exploiting a vuln
+;;   in a lab is a CyberExploit but NOT an Attack."
+;;
+;; STEP 1 — SEARCH: SUMO has Attack (subclass of Maneuver,
+;;   under Contest > ViolentContest).  But ViolentContest carries
+;;   kinetic/military semantics — a pentester is not engaging in
+;;   a ViolentContest.  Attack is wrong parent.
+;;
+;; STEP 2 — JUSTIFY: Can't use Attack because of inherited
+;;   kinetic semantics.  Can't use just IntentionalProcess
+;;   because we need the exploit-specific axioms (requires a
+;;   vulnerability, has a target system, etc.).  New class needed.
+;;
+;; STEP 3 — CLASSIFY: It's a thing that happens over time,
+;;   with a specific purpose => Process => IntentionalProcess.
+;;
+;; STEP 4 — PARENT: (subclass CyberExploit IntentionalProcess)
+;;   DELIBERATELY NOT under Attack/Maneuver/ViolentContest.
+;;
+;; STEP 5 — DEFINE:
+;;   parent class: IntentionalProcess
+;;   doc: An IntentionalProcess where an AutonomousAgent leverages
+;;        a Vulnerability in a system to achieve some level of
+;;        compromise or unauthorized capability.  The agent may
+;;        have offensive intent (adversary) or defensive intent
+;;        (penetration tester).  Targets a specific Vulnerability
+;;        — if no vulnerability exists, the exploit cannot succeed.
+;;   rule: a CyberExploit requires a vulnerability to exist
+;;     (=>
+;;       (and
+;;         (instance ?EXPLOIT CyberExploit)
+;;         (agent ?EXPLOIT ?AGENT)
+;;         (patient ?EXPLOIT ?SYSTEM))
+;;       (exists (?VUL)
+;;         (and
+;;           (instance ?VUL Vulnerability)
+;;           (vulnerableSystem ?VUL ?SYSTEM ?AGENT))))
+;;   note: uses existing 'agent' and 'patient' case roles
+;;         from SUMO Process
+
+(subclass CyberExploit IntentionalProcess)
+(termFormat EnglishLanguage CyberExploit "cyber exploit")
+(documentation CyberExploit EnglishLanguage "An &%IntentionalProcess
+where an &%AutonomousAgent leverages a &%Vulnerability in a system
+to achieve some level of compromise or unauthorized capability.  The
+agent may have offensive intent (adversary) or defensive intent
+(penetration tester).  Not a subclass of &%Attack because &%Attack
+inherits kinetic &%ViolentContest semantics inappropriate for cyber
+operations.  A &%CyberExploit requires a &%Vulnerability to exist —
+if no vulnerability exists, the exploit cannot succeed.")
+
+;; rule: a CyberExploit requires a vulnerability to exist
+
+(=>
+  (and
+    (instance ?EXPLOIT CyberExploit)
+    (agent ?EXPLOIT ?AGENT)
+    (patient ?EXPLOIT ?SYSTEM))
+  (exists (?VUL)
+    (and
+      (instance ?VUL Vulnerability)
+      (vulnerableSystem ?VUL ?SYSTEM ?AGENT))))
+
+;; rule: temporal consequence — a CyberAttack (not pentest) involves
+;; an agent who lacks authorized access before the exploit; after,
+;; the agent has gained capability (like the Learning pattern)
+;; NOTE: scoped to CyberAttack to avoid contradiction with
+;; PenetrationTest authorization rules
+
+(=>
+  (and
+    (instance ?ATK CyberAttack)
+    (agent ?ATK ?AGENT)
+    (patient ?ATK ?SYSTEM))
+  (and
+    (holdsDuring (BeginFn (WhenFn ?ATK))
+      (not (authorizedAccess ?AGENT ?SYSTEM)))
+    (holdsDuring (EndFn (WhenFn ?ATK))
+      (capability CyberExploit agent ?AGENT))))
+
+;; rule: the vulnerability must be present on the system for the
+;; exploit to succeed — the exploit leverages the vulnerability
+
+(=>
+  (and
+    (instance ?EXPLOIT CyberExploit)
+    (patient ?EXPLOIT ?SYSTEM)
+    (instance ?VUL Vulnerability)
+    (vulnerableSystem ?VUL ?SYSTEM ?AGENT))
+  (holdsDuring (WhenFn ?EXPLOIT) (attribute ?SYSTEM ?VUL)))
+
+
+;; ============================================================
+;; 7. CyberAttack (subclass of CyberExploit)
+;; ============================================================
+;;
+;; STEP 0 — WHY: "The prover should distinguish between an
+;;   exploit performed by a pentester (defensive) and an exploit
+;;   performed by an adversary (offensive).  A CyberAttack is
+;;   a CyberExploit with adversarial intent — the agent aims to
+;;   degrade, disrupt, deny, or extract unauthorized value."
+;;
+;; STEP 1 — SEARCH: Attack in SUMO sits under
+;;   Maneuver > Contest > ViolentContest.  Kinetic semantics
+;;   would be inherited incorrectly for cyber operations.
+;;
+;; STEP 3 — CLASSIFY: It's a specialization of CyberExploit
+;;   distinguished by intent => Class, subclass of CyberExploit.
+;;
+;; STEP 5 — DEFINE:
+;;   parent class: CyberExploit
+;;   doc: A CyberExploit performed with adversarial intent — the
+;;        agent aims to degrade, disrupt, deny, or extract
+;;        unauthorized value from the target system.
+;;        Distinguished from other CyberExploits (such as
+;;        penetration testing) by the intent dimension.
+;;   NOTE: DELIBERATELY NOT subclass of Attack (which lives
+;;         under ViolentContest in SUMO).
+
+(subclass CyberAttack CyberExploit)
+(termFormat EnglishLanguage CyberAttack "cyber attack")
+(documentation CyberAttack EnglishLanguage "A &%CyberExploit performed
+with adversarial intent — the agent aims to degrade, disrupt, deny
+service, or extract unauthorized value from the target system.
+Distinguished from other &%CyberExploits (such as &%PenetrationTest)
+by the intent dimension.  Not a subclass of &%Attack, which inherits
+kinetic &%ViolentContest semantics from SUMO's military ontology.")
+
+;; rule: the agent of a CyberAttack intends to cause Damaging
+;; or unauthorized DataTransfer on the target system
+
+(=>
+  (and
+    (instance ?ATK CyberAttack)
+    (agent ?ATK ?ADVERSARY)
+    (patient ?ATK ?SYSTEM))
+  (hasPurpose ?ATK
+    (or
+      (exists (?DMG)
+        (and
+          (instance ?DMG Damaging)
+          (patient ?DMG ?SYSTEM)))
+      (exists (?DT)
+        (and
+          (instance ?DT DataTransfer)
+          (origin ?DT ?SYSTEM)
+          (not (authorizedAccess ?ADVERSARY ?SYSTEM)))))))
+
+;; rule: causal consequence — a CyberAttack causes Damaging
+;; or unauthorized DataTransfer (not just intent, but actual effect)
+
+(=>
+  (and
+    (instance ?ATK CyberAttack)
+    (agent ?ATK ?ADVERSARY)
+    (patient ?ATK ?SYSTEM))
+  (exists (?EFFECT)
+    (and
+      (or
+        (instance ?EFFECT Damaging)
+        (instance ?EFFECT DataTransfer))
+      (patient ?EFFECT ?SYSTEM)
+      (causes ?ATK ?EFFECT))))
+
+;; rule: desires — the adversary desires the outcome of the attack
+
+(=>
+  (and
+    (instance ?ATK CyberAttack)
+    (agent ?ATK ?ADVERSARY)
+    (patient ?ATK ?SYSTEM))
+  (desires ?ADVERSARY
+    (or
+      (exists (?DMG)
+        (and
+          (instance ?DMG Damaging)
+          (patient ?DMG ?SYSTEM)))
+      (exists (?DT)
+        (and
+          (instance ?DT DataTransfer)
+          (origin ?DT ?SYSTEM))))))
+
+;; rule: the system owner does NOT desire the attack outcome
+;; (like the Threatening/Punishing pattern)
+
+(=>
+  (and
+    (instance ?ATK CyberAttack)
+    (patient ?ATK ?SYSTEM)
+    (possesses ?OWNER ?SYSTEM))
+  (not
+    (desires ?OWNER
+      (exists (?DMG)
+        (and
+          (instance ?DMG Damaging)
+          (patient ?DMG ?SYSTEM)
+          (causes ?ATK ?DMG))))))
+
+
+;; ============================================================
+;; 8. PenetrationTest (subclass of CyberExploit + SecurityAssessment)
+;; ============================================================
+;;
+;; STEP 0 — WHY: "The prover should conclude that a pentest
+;;   is both an exploit process (it uses offensive techniques)
+;;   AND an assessment process (its purpose is improving
+;;   security posture).  Also: the pentester must have
+;;   authorization from the system's controller."
+;;   This captures the offensive-techniques-for-defensive-gain
+;;   pattern from Paper 02 Section 2 (CTF/HTB/pentest context).
+;;
+;; STEP 3 — CLASSIFY: It's a Process with two natures.
+;;   SUMO supports multiple inheritance via multiple subclass
+;;   assertions.  CyberExploit's rule (requires vulnerability)
+;;   only fires when the pentest succeeds in exploiting something.
+;;   SecurityAssessment's semantics don't require exploitation.
+;;   No axiom conflict.
+;;
+;; STEP 4 — PARENT: DUAL INHERITANCE
+;;   (subclass PenetrationTest CyberExploit)
+;;   (subclass PenetrationTest SecurityAssessment)
+;;
+;; STEP 5 — DEFINE:
+;;   parent classes: CyberExploit AND SecurityAssessment
+;;   doc: A CyberExploit performed by an authorized agent with
+;;        the intent of discovering and documenting Vulnerabilities
+;;        to improve the target system's security posture.  The
+;;        pentester uses the same techniques as an adversary but
+;;        with the goal of increasing the cost/difficulty of
+;;        adversarial exploitation, not to cause harm.
+;;   rule: authorization — the pentester has authorization from
+;;         the system's controller
+;;     (=>
+;;       (and
+;;         (instance ?PT PenetrationTest)
+;;         (agent ?PT ?TESTER)
+;;         (patient ?PT ?SYSTEM))
+;;       (exists (?AUTH ?OWNER)
+;;         (and
+;;           (instance ?AUTH Stating)
+;;           (agent ?AUTH ?OWNER)
+;;           (patient ?AUTH ?TESTER)
+;;           (or
+;;             (possesses ?OWNER ?SYSTEM)
+;;             (manages ?OWNER ?SYSTEM)))))
+
+(subclass PenetrationTest CyberExploit)
+(subclass PenetrationTest SecurityAssessment)
+(termFormat EnglishLanguage PenetrationTest "penetration test")
+(documentation PenetrationTest EnglishLanguage "A &%CyberExploit
+performed by an authorized agent with the intent of discovering and
+documenting &%Vulnerabilities to improve the target system's security
+posture.  Inherits from both &%CyberExploit (uses offensive techniques,
+requires a &%Vulnerability) and &%SecurityAssessment (evaluates security
+posture).  The pentester uses the same techniques as an adversary but
+with the goal of strengthening defenses, not causing harm.")
+
+;; rule: the pentester must have authorization from the system owner
+;; or be an authorized accessor of the system
+
+(=>
+  (and
+    (instance ?PT PenetrationTest)
+    (agent ?PT ?TESTER)
+    (patient ?PT ?SYSTEM))
+  (or
+    (exists (?OWNER ?GRANT)
+      (and
+        (possesses ?OWNER ?SYSTEM)
+        (instance ?GRANT Stating)
+        (agent ?GRANT ?OWNER)
+        (patient ?GRANT ?TESTER)))
+    (authorizedAccess ?TESTER ?SYSTEM)))
+
+;; rule: purpose — the purpose of a PenetrationTest is that
+;; discovered vulnerabilities get remediated
+
+(=>
+  (and
+    (instance ?PT PenetrationTest)
+    (agent ?PT ?TESTER)
+    (patient ?PT ?SYSTEM))
+  (hasPurpose ?PT
+    (exists (?VUL ?PATCH ?PROC)
+      (and
+        (instance ?VUL Vulnerability)
+        (attribute ?SYSTEM ?VUL)
+        (instance ?PATCH SoftwarePatch)
+        (patchRemediates ?PATCH ?VUL)
+        (instance ?PROC ComputerProcess)
+        (programRunning ?PROC ?PATCH)))))
+
+;; rule: temporal knowledge transition (Learning pattern) — before
+;; the pentest, the owner doesn't know about vulnerabilities; after,
+;; the owner knows
+
+(=>
+  (and
+    (instance ?PT PenetrationTest)
+    (agent ?PT ?TESTER)
+    (patient ?PT ?SYSTEM)
+    (possesses ?OWNER ?SYSTEM)
+    (instance ?VUL Vulnerability)
+    (attribute ?SYSTEM ?VUL))
+  (and
+    (holdsDuring (BeginFn (WhenFn ?PT))
+      (not (knows ?OWNER (attribute ?SYSTEM ?VUL))))
+    (holdsDuring (EndFn (WhenFn ?PT))
+      (knows ?OWNER (attribute ?SYSTEM ?VUL)))))
+
+;; rule: subProcess — a PenetrationTest contains a Stating subprocess
+;; where the tester reports findings to the system owner
+
+(=>
+  (and
+    (instance ?PT PenetrationTest)
+    (agent ?PT ?TESTER)
+    (patient ?PT ?SYSTEM)
+    (possesses ?OWNER ?SYSTEM))
+  (exists (?REPORT)
+    (and
+      (instance ?REPORT Stating)
+      (agent ?REPORT ?TESTER)
+      (destination ?REPORT ?OWNER)
+      (subProcess ?REPORT ?PT))))
+
+
+;; ============================================================
+;; 9. PenetrationTester (SocialRole)
+;; ============================================================
+;;
+;; STEP 0 — WHY: "The prover should conclude that an agent
+;;   performing a PenetrationTest holds the PenetrationTester
+;;   role.  This enables reasoning about the pool of agents
+;;   authorized to perform pentests."
+;;   Follows the EthicalHacker pattern (already in Cyber.kif
+;;   line 92).  "Hacking as a service" — offensive techniques
+;;   for defensive gain.
+;;
+;; STEP 1 — SEARCH: EthicalHacker (SocialRole) exists but is
+;;   broader.  Not all ethical hackers are pentesters (some do
+;;   code review, not exploitation).  All pentesters ARE ethical
+;;   hackers.  Consider the relationship.
+;;
+;; STEP 3 — CLASSIFY: It's one specific role, not a category
+;;   of roles => instance of SocialRole (same as EthicalHacker).
+;;
+;; STEP 5 — DEFINE:
+;;   type: (instance PenetrationTester SocialRole)
+;;   doc: A SocialRole for an AutonomousAgent who performs
+;;        PenetrationTests — using offensive cyber techniques
+;;        to discover Vulnerabilities for the purpose of
+;;        improving a system's defensive posture.
+;;   design decision: consider whether PenetrationTester should
+;;     be related to EthicalHacker (specialization? overlap?).
+
+(instance PenetrationTester SocialRole)
+(termFormat EnglishLanguage PenetrationTester "penetration tester")
+(documentation PenetrationTester EnglishLanguage "A &%SocialRole for
+an &%AutonomousAgent who performs &%PenetrationTests — using offensive
+cyber techniques to discover &%Vulnerabilities for the purpose of
+improving a system's defensive posture.  Every agent holding the
+&%PenetrationTester role is also an &%EthicalHacker, since penetration
+testing is a specialized form of ethical hacking.")
+
+;; rule: the agent of a PenetrationTest holds the PenetrationTester role
+
+(=>
+  (and
+    (instance ?PT PenetrationTest)
+    (agent ?PT ?TESTER))
+  (attribute ?TESTER PenetrationTester))
+
+;; rule: every PenetrationTester is an EthicalHacker
+
+(=>
+  (attribute ?AGENT PenetrationTester)
+  (attribute ?AGENT EthicalHacker))
+
+
+;; ============================================================
+;; 10. SecurityAssessment (subclass of IntentionalProcess)
+;; ============================================================
+;;
+;; STEP 0 — WHY: "The prover should recognize that pentesting,
+;;   vulnerability scanning, code review, and compliance audits
+;;   are all instances of the broader concept of evaluating a
+;;   system's security posture."  This is deliberately NOT
+;;   linked to the adversarial knapsack formalism — that is a
+;;   separate modeling contribution for resource-constrained
+;;   operations.
+;;
+;; STEP 1 — SEARCH: No SecurityAssessment in SUMO or domain
+;;   files.  Investigation (subclass of IntentionalProcess)
+;;   is too general.
+;;
+;; STEP 3 — CLASSIFY: It happens over time, has purpose
+;;   => Process => IntentionalProcess.
+;;
+;; STEP 5 — DEFINE:
+;;   parent class: IntentionalProcess
+;;   doc: An IntentionalProcess where an AutonomousAgent evaluates
+;;        the security posture of a system.  Includes penetration
+;;        testing, vulnerability scanning, code review, and
+;;        compliance auditing.  The goal is to identify
+;;        Vulnerabilities and assess risk.
+
+(subclass SecurityAssessment IntentionalProcess)
+(termFormat EnglishLanguage SecurityAssessment "security assessment")
+(documentation SecurityAssessment EnglishLanguage "An
+&%IntentionalProcess where an &%AutonomousAgent evaluates the security
+posture of a system.  Includes penetration testing, vulnerability
+scanning, code review, and compliance auditing.  The purpose is to
+identify &%Vulnerabilities and assess risk, not to cause harm or
+extract value.")
+
+;; rule: the purpose of a SecurityAssessment is identifying vulnerabilities
+
+(=>
+  (and
+    (instance ?SA SecurityAssessment)
+    (agent ?SA ?ASSESSOR))
+  (hasPurpose ?SA
+    (exists (?VUL ?SYS)
+      (and
+        (instance ?VUL Vulnerability)
+        (vulnerableSystem ?VUL ?SYS ?ASSESSOR)))))
+
+;; rule: causal output — a SecurityAssessment results in a report
+;; (ContentBearingObject) that contains information about discovered
+;; vulnerabilities
+
+(=>
+  (and
+    (instance ?SA SecurityAssessment)
+    (agent ?SA ?ASSESSOR)
+    (patient ?SA ?SYSTEM))
+  (exists (?REPORT ?PROP)
+    (and
+      (instance ?REPORT ContentBearingObject)
+      (result ?SA ?REPORT)
+      (instance ?PROP Proposition)
+      (containsInformation ?REPORT ?PROP)
+      (refers ?PROP ?SYSTEM))))
+
+
+;; ============================================================
+;;
+;;  ADVERSARIAL KNAPSACK — Separate Axiom Set
+;;
+;;  YOUR unique contribution.  Formalizes the resource-constrained
+;;  optimization from Papers 01 (MILCOM 2024) and 02 (arXiv
+;;  2403.10789).  Kept separate from SecurityAssessment.
+;;
+;;  Mathematical grounding:
+;;    Paper 02, Section 3.2: H_i (hazard), C_i(x) = b_i + m_i*x
+;;      (patch cost), d_i(x) = B_i + M_i (exploit cost)
+;;    Paper 02, Section 3.3: player action spaces, indicator
+;;      variables zeta_i^d (defend) and xi_i^a (attack)
+;;    HotSOS WiP, Section 7: Game tuple G = (P, S, U),
+;;      U_D = (V * A_sys) - C(S_D) - L(S_A)
+;;
+;;  The existing capacity/computationalDemand constraint above handles
+;;  the DEVICE-level knapsack (compute throughput).  These new
+;;  terms handle the AGENT-level knapsack (operational budget).
+;;  Device = micro scale, Agent = meso scale.
+;;
+;; ============================================================
+
+
+;; ============================================================
+;; 11. AdversarialKnapsack (subclass of Contest)
+;; ============================================================
+;;
+;; STEP 0 — WHY: "The prover should recognize a scenario where
+;;   two agents compete over a shared set of vulnerabilities
+;;   subject to resource constraints, and verify that each
+;;   agent's selected actions satisfy their budget constraint."
+;;   This IS the core game from Paper 02 Definition:
+;;   'Adversarial Knapsack is a system of interacting Weighted
+;;   Knapsack problems.'
+;;
+;; STEP 1 — SEARCH: Contest exists in SUMO (SocialInteraction
+;;   where agents try to defeat each other).  But no
+;;   resource-constrained vulnerability competition exists.
+;;
+;; STEP 3 — CLASSIFY: It's a SocialInteraction between agents
+;;   with opposing objectives => Contest.
+;;
+;; STEP 4 — PARENT: (subclass AdversarialKnapsack Contest)
+;;
+;; STEP 5 — DEFINE:
+;;   parent class: Contest
+;;   doc: A Contest between two AutonomousAgents (attacker and
+;;        defender) who compete over a shared set of
+;;        Vulnerabilities subject to resource constraints.  Each
+;;        agent selects a subset of vulnerabilities to act upon
+;;        (exploit or patch) to maximize utility without exceeding
+;;        their resource budget.  Formalizes the Adversarial
+;;        Knapsack (AK) problem from Paper 02 (arXiv 2403.10789).
+;;   key relations:
+;;     - Two agents with opposing objectives
+;;     - Shared vulnerability set (H = {h1...hN})
+;;     - Per-agent resource budgets (W_a, W_d)
+;;     - Per-vulnerability costs (agent-relative) and hazard
+;;       scores (common)
+
+;; --- YOUR KIF GOES HERE ---
+
+
+
+;; ============================================================
+;; 12. operationalBudget (BinaryPredicate)
+;; ============================================================
+;;
+;; STEP 0 — WHY: "The prover needs to know each agent's total
+;;   resource budget to verify the knapsack constraint:
+;;   sum(costs) <= W."  This is W_a (attacker budget) and W_d
+;;   (defender budget) from Paper 02.
+;;
+;; STEP 1 — SEARCH: financialCost maps a Process to cost.
+;;   valuation maps an asset to value.  Neither captures the
+;;   agent's total operational budget for a period.  New term.
+;;
+;; STEP 3 — CLASSIFY: Maps agent to budget amount.
+;;   => BinaryPredicate.
+;;
+;; STEP 5 — DEFINE:
+;;   type: BinaryPredicate
+;;   arg1 (domain 1): AutonomousAgent
+;;   arg2 (domain 2): CurrencyMeasure (or RealNumber)
+;;   doc: (operationalBudget ?AGENT ?BUDGET) means ?AGENT has a
+;;        total resource budget of ?BUDGET for cyber operations
+;;        in the current operational period.  This is the knapsack
+;;        capacity W from Paper 02.
+
+;; --- YOUR KIF GOES HERE ---
+
+
+
+;; ============================================================
+;; 13. Knapsack Constraint Rule
+;; ============================================================
+;;
+;; STEP 0 — WHY: "If a defender selects vulnerabilities to
+;;   patch, the prover should verify that the sum of patch costs
+;;   does not exceed the defender's budget.  Same for attacker
+;;   with exploit costs."  This is the core constraint:
+;;   Sigma_i theta_i * w_i <= W from your papers.
+;;
+;; PSEUDOCODE:
+;;   For defender:
+;;     sum(patchCost(v_i, defender, c_i) for selected i)
+;;       <= operationalBudget(defender, W_d)
+;;   For attacker:
+;;     sum(exploitCost(v_i, attacker, c_i) for selected i)
+;;       <= operationalBudget(attacker, W_a)
+;;
+;; NOTE: This parallels the existing capacity constraint above
+;;   (lines 276-292) but at the AGENT level instead of DEVICE
+;;   level.  The capacity rule says combined process load cannot
+;;   exceed a computer's throughput.  This rule says combined
+;;   action costs cannot exceed an agent's budget.
+;;   Device = micro, Agent = meso.
+
+;; --- YOUR KIF GOES HERE ---
+
+
+
+;; ============================================================
+;; 14. Dueling Knapsack Interaction Rule
+;; ============================================================
+;;
+;; STEP 0 — WHY: "If an attacker exploits a vulnerability on
+;;   a system, but the defender has already patched that
+;;   vulnerability on that system, the prover should conclude
+;;   the exploit does NOT succeed."  This is the
+;;   (1 - zeta_i^d) * mu_i term from Paper 02 — the attacker's
+;;   gain depends on which vulnerabilities the defender has NOT
+;;   patched.
+;;
+;; PSEUDOCODE:
+;;   CyberExploit(?E) ^ agent(?E, ?ATTACKER) ^
+;;   patient(?E, ?SYSTEM) ^ targets(?E, ?VUL) ^
+;;   exists ?PATCH: instance(?PATCH, SoftwarePatch) ^
+;;     patchRemediates(?PATCH, ?VUL) ^
+;;     holdsDuring(?T, programRunning(?PROC, ?PATCH)) ^
+;;     runs(?SYSTEM, ?PROC)
+;;   => not(successful(?EXPLOIT))
+;;
+;; DEPENDS ON: targets and patchRemediates predicates below.
+;; DESIGN QUESTION: what does 'successful' mean formally?
+;;   Options: define a new predicate, use an existing SUMO
+;;   attribute like Failure, or model as a result state.
+
+;; --- YOUR KIF GOES HERE ---
+
+
+
+;; ============================================================
+;;
+;;  SUPPORTING PREDICATES
+;;
+;; ============================================================
+
+
+;; ============================================================
+;; +. targets (BinaryPredicate)
+;; ============================================================
+;;
+;; STEP 0 — WHY: "The prover needs to know which vulnerability
+;;   a CyberExploit is directed at, so the dueling knapsack
+;;   rule can check whether that specific vulnerability has been
+;;   patched."
+;;
+;; STEP 5 — DEFINE:
+;;   type: BinaryPredicate
+;;   arg1 (domain 1): CyberExploit
+;;   arg2 (domain 2): Vulnerability
+;;   doc: (targets ?EXPLOIT ?VUL) means ?EXPLOIT is directed
+;;        at ?VUL.
+
+(instance targets BinaryPredicate)
+(domain targets 1 IntentionalProcess)
+(domain targets 2 Entity)
+(termFormat EnglishLanguage targets "targets")
+(format EnglishLanguage targets "%1 targets %2")
+(documentation targets EnglishLanguage "(&%targets ?PROCESS ?TARGET)
+means that ?PROCESS is directed at ?TARGET.  In the cybersecurity
+context, a &%CyberExploit targets a &%Vulnerability, and a
+&%CyberAttack targets a system or data asset.  Domain 1 is
+&%IntentionalProcess (broader than just &%CyberExploit) because
+non-cyber processes can also be directed at targets.")
+
+;; rule: if a CyberExploit targets a vulnerability, that
+;; vulnerability must exist in the patient system
+
+(=>
+  (and
+    (instance ?EXPLOIT CyberExploit)
+    (targets ?EXPLOIT ?VUL)
+    (instance ?VUL Vulnerability)
+    (patient ?EXPLOIT ?SYSTEM)
+    (agent ?EXPLOIT ?AGENT))
+  (vulnerableSystem ?VUL ?SYSTEM ?AGENT))
+
+
+;; ============================================================
+;; patchRemediates (BinaryPredicate)
+;; ============================================================
+
+(instance patchRemediates BinaryPredicate)
+(domain patchRemediates 1 SoftwarePatch)
+(domain patchRemediates 2 Vulnerability)
+(termFormat EnglishLanguage patchRemediates "patch remediates")
+(format EnglishLanguage patchRemediates "%1 remediates vulnerability %2")
+(documentation patchRemediates EnglishLanguage "(&%patchRemediates
+?PATCH ?VUL) means that applying &%SoftwarePatch ?PATCH eliminates
+&%Vulnerability ?VUL from the affected system.")
+
+;; rule: if a patch remediates a vulnerability and the patch is
+;; running on a system, the system no longer has that vulnerability
+
+(=>
+  (and
+    (patchRemediates ?PATCH ?VUL)
+    (attribute ?SYSTEM ?VUL)
+    (instance ?PROC ComputerProcess)
+    (computerRunning ?PROC ?SYSTEM)
+    (programRunning ?PROC ?PATCH))
+  (not (attribute ?SYSTEM ?VUL)))
+
+;; rule: temporal state transition — the vulnerability holds before
+;; the patch process runs, and does not hold after
+
+(=>
+  (and
+    (patchRemediates ?PATCH ?VUL)
+    (instance ?PROC ComputerProcess)
+    (programRunning ?PROC ?PATCH)
+    (instance ?SYSTEM Computer)
+    (computerRunning ?PROC ?SYSTEM)
+    (attribute ?SYSTEM ?VUL))
+  (and
+    (holdsDuring (BeginFn (WhenFn ?PROC)) (attribute ?SYSTEM ?VUL))
+    (holdsDuring (EndFn (WhenFn ?PROC)) (not (attribute ?SYSTEM ?VUL)))))

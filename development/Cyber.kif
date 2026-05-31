@@ -1767,3 +1767,41 @@ non-cyber processes can also be directed at targets.")
   (and
     (holdsDuring (BeginFn (WhenFn ?PROC)) (attribute ?SYSTEM ?VUL))
     (holdsDuring (EndFn (WhenFn ?PROC)) (not (attribute ?SYSTEM ?VUL)))))
+(subclass UndefinedBehaviorConstruct LinguisticExpression)
+(termFormat EnglishLanguage UndefinedBehaviorConstruct "undefined behavior construct")
+(documentation UndefinedBehaviorConstruct EnglishLanguage "A
+&%LinguisticExpression of a &%ComputerLanguage whose behavior is not defined
+by that language's standard.  Adapted from ISO/IEC 9899:2018 3.4.3 :
+'behavior, upon use of a nonportable or erroneous program construct or of
+erroneous data, for which this International Standard imposes no
+requirements.'  Reliance by a &%ComputerProgram on an instance of
+&%UndefinedBehaviorConstruct is the discriminator for
+&%UndefinedBehaviorRelianceBug.")
+
+(=>
+  (instance ?C UndefinedBehaviorConstruct)
+  (exists (?LANG)
+    (and
+      (instance ?LANG ComputerLanguage)
+      (expressedInLanguage ?C ?LANG))))
+
+
+(instance reliesOnUndefinedBehavior BinaryPredicate)
+(domain reliesOnUndefinedBehavior 1 ComputerProgram)
+(domain reliesOnUndefinedBehavior 2 UndefinedBehaviorConstruct)
+(termFormat EnglishLanguage reliesOnUndefinedBehavior "relies on undefined behavior")
+(format EnglishLanguage reliesOnUndefinedBehavior "%1 relies on the undefined behavior of %2")
+(documentation reliesOnUndefinedBehavior EnglishLanguage "(&%reliesOnUndefinedBehavior
+?PROG ?CONSTRUCT) means that the correct execution of &%ComputerProgram ?PROG
+depends on the behavior of ?CONSTRUCT, which is an
+&%UndefinedBehaviorConstruct under its &%ComputerLanguage's standard.
+Anchored in CWE-758 : 'The product uses an API function, data structure, or
+other entity in a manner that relies on properties that are not always
+guaranteed to hold for that entity.'")
+
+(=>
+  (reliesOnUndefinedBehavior ?PROG ?CONSTRUCT)
+  (exists (?LANG)
+    (and
+      (instance ?LANG ComputerLanguage)
+      (expressedInLanguage ?CONSTRUCT ?LANG))))

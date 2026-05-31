@@ -1,0 +1,27 @@
+
+;; ============================================================
+;; SoftwareBug subclass taxonomy : alpha / beta1 / beta2 / gamma
+;; Sources : CWE-440, CWE-1059, CWE-758, CWE-703, ISO/IEC 9899:2018,
+;;           IEEE 29148-2018, NIST SP 800-30 Rev.1, IEC 61882, SAE ARP4761A
+;; ============================================================
+
+(subclass Specification Proposition)
+(termFormat EnglishLanguage Specification "specification")
+(documentation Specification EnglishLanguage "A &%Proposition declaring how a
+&%ComputerProgram, system, or component should behave, what properties it
+should possess, or what constraints it should satisfy.  Mirrors the &%Policy
+pattern : the &%Specification is the propositional content ; the act of
+issuing it is a &%Declaring event whose &%agent is the specifying party.
+Adapted from ISO/IEC/IEEE 24765:2017 3.3793 : 'document that specifies, in a
+complete, precise, verifiable manner, the requirements, design, behavior, or
+other characteristics of a system or component.'  A &%Specification may be
+recorded in any &%ContentBearingObject via &%containsInformation.")
+
+(=>
+  (instance ?SPEC Specification)
+  (exists (?AGENT ?DECL)
+    (and
+      (instance ?DECL Declaring)
+      (agent ?DECL ?AGENT)
+      (patient ?DECL ?SPEC))))
+

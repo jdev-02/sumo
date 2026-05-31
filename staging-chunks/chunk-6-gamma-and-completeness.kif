@@ -1,0 +1,38 @@
+(subclass UnanticipatedBehaviorBug SoftwareBug)
+(termFormat EnglishLanguage UnanticipatedBehaviorBug "unanticipated behavior bug")
+(documentation UnanticipatedBehaviorBug EnglishLanguage "A &%SoftwareBug whose
+discriminating property is that the actual &%programBehavior at issue was not
+&%considers-ed by the specifying agent at the time of &%intendedBehavior
+issuance.  Uses the positive-act framing of NIST SP 800-30 Rev.1 2.3.1
+('threat scenarios considered'), IEC 61882 (HAZOP), and SAE ARP4761A : the
+agent's set of considered behaviors does not cover the actual.  Adapted from
+CWE-703 (Improper Check or Handling of Exceptional Conditions).")
+
+(=>
+  (and
+    (instance ?PROG ComputerProgram)
+    (programBehavior ?PROG ?INPUT ?ACTUAL)
+    (intendedBehavior ?PROG ?INTENDED ?AGENT)
+    (not (equal ?ACTUAL ?INTENDED))
+    (not (instance ?ACTUAL ?INTENDED))
+    (not (considers ?AGENT (programBehavior ?PROG ?INPUT ?ACTUAL))))
+  (exists (?BUG)
+    (and
+      (instance ?BUG UnanticipatedBehaviorBug)
+      (bugInProgram ?BUG ?PROG ?AGENT))))
+
+
+;; Completeness axiom : every SoftwareBug instance is an instance of at
+;; least one of the four subclasses.  Overlaps are permitted ; a single bug
+;; may exhibit multiple discriminators (e.g. an ambiguous spec whose
+;; resolution also relied on undefined behavior).  See documentation strings
+;; of the four subclasses for source anchors.
+(=>
+  (instance ?B SoftwareBug)
+  (or
+    (instance ?B ExpectedBehaviorViolationBug)
+    (instance ?B InsufficientSpecificationBug)
+    (instance ?B UndefinedBehaviorRelianceBug)
+    (instance ?B UnanticipatedBehaviorBug)))
+
+

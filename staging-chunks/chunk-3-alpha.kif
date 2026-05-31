@@ -1,0 +1,30 @@
+(subclass ExpectedBehaviorViolationBug SoftwareBug)
+(termFormat EnglishLanguage ExpectedBehaviorViolationBug "expected behavior violation bug")
+(documentation ExpectedBehaviorViolationBug EnglishLanguage "A &%SoftwareBug
+whose discriminating property is that a &%Specification recording the
+&%intendedBehavior was articulated by the specifying agent prior to the
+deviation, and a &%Document (or other &%ContentBearingObject) records that
+&%Specification via &%containsInformation.  Adapted from CWE-440 (Expected
+Behavior Violation) : 'A feature, API, or function does not perform according
+to its specification.'")
+
+(=>
+  (and
+    (instance ?PROG ComputerProgram)
+    (programBehavior ?PROG ?INPUT ?ACTUAL)
+    (intendedBehavior ?PROG ?INTENDED ?AGENT)
+    (not (equal ?ACTUAL ?INTENDED))
+    (not (instance ?ACTUAL ?INTENDED))
+    (exists (?SPEC ?DOC ?DECL)
+      (and
+        (instance ?SPEC Specification)
+        (instance ?DOC ContentBearingObject)
+        (containsInformation ?DOC ?SPEC)
+        (instance ?DECL Declaring)
+        (agent ?DECL ?AGENT)
+        (patient ?DECL ?SPEC))))
+  (exists (?BUG)
+    (and
+      (instance ?BUG ExpectedBehaviorViolationBug)
+      (bugInProgram ?BUG ?PROG ?AGENT))))
+

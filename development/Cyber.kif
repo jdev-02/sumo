@@ -1767,3 +1767,29 @@ non-cyber processes can also be directed at targets.")
   (and
     (holdsDuring (BeginFn (WhenFn ?PROC)) (attribute ?SYSTEM ?VUL))
     (holdsDuring (EndFn (WhenFn ?PROC)) (not (attribute ?SYSTEM ?VUL)))))
+(subclass ExpectedBehaviorViolationBug SoftwareBug)
+(termFormat EnglishLanguage ExpectedBehaviorViolationBug "expected behavior violation bug")
+(documentation ExpectedBehaviorViolationBug EnglishLanguage "A &%SoftwareBug
+whose discriminating property is that a &%ContentBearingObject records the
+specifying agent's &%intendedBehavior for the program prior to the deviation,
+and the specifying agent has declared that document.  Adapted from CWE-440
+(Expected Behavior Violation) : 'A feature, API, or function does not perform
+according to its specification.'")
+
+(=>
+  (and
+    (instance ?PROG ComputerProgram)
+    (programBehavior ?PROG ?INPUT ?ACTUAL)
+    (intendedBehavior ?PROG ?INTENDED ?AGENT)
+    (not (equal ?ACTUAL ?INTENDED))
+    (exists (?DOC ?DECL)
+      (and
+        (instance ?DOC ContentBearingObject)
+        (containsInformation ?DOC (intendedBehavior ?PROG ?INTENDED ?AGENT))
+        (instance ?DECL Declaring)
+        (agent ?DECL ?AGENT)
+        (patient ?DECL ?DOC))))
+  (exists (?BUG)
+    (and
+      (instance ?BUG ExpectedBehaviorViolationBug)
+      (bugInProgram ?BUG ?PROG ?AGENT))))

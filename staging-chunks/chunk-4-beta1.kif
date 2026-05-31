@@ -1,12 +1,13 @@
 (subclass InsufficientSpecificationBug SoftwareBug)
 (termFormat EnglishLanguage InsufficientSpecificationBug "insufficient specification bug")
 (documentation InsufficientSpecificationBug EnglishLanguage "A &%SoftwareBug
-whose discriminating property is that two or more agents, each reading the
-same &%Specification in good faith, hold different beliefs about what
-&%intendedBehavior the &%Specification requires.  The &%Specification admits
-multiple internally consistent readings.  Adapted from CWE-1059 (Insufficient
-Technical Documentation) and IEEE 29148-2018 5.2.5 ('unambiguous' quality
-characteristic).")
+whose discriminating property is that a &%ContentBearingObject records the
+specifying agent's &%intendedBehavior for the program, and a different agent
+reading the same document derives a different &%intendedBehavior for the same
+program.  The document admits two readings; the spec is therefore
+insufficient to constrain the implementation.  Adapted from CWE-1059
+(Insufficient Technical Documentation) and IEEE 29148-2018 5.2.5
+('unambiguous' quality characteristic).")
 
 (=>
   (and
@@ -14,17 +15,15 @@ characteristic).")
     (programBehavior ?PROG ?INPUT ?ACTUAL)
     (intendedBehavior ?PROG ?INTENDED ?AGENT)
     (not (equal ?ACTUAL ?INTENDED))
-    (instance ?SPEC Specification)
-    (exists (?READING1 ?READING2 ?AGENT2)
+    (exists (?DOC ?AGENT2 ?INTENDED2)
       (and
-        (containsInformation ?SPEC ?READING1)
-        (containsInformation ?SPEC ?READING2)
-        (not (equal ?READING1 ?READING2))
-        (believes ?AGENT ?READING1)
-        (believes ?AGENT2 ?READING2)
-        (not (equal ?AGENT ?AGENT2)))))
+        (instance ?DOC ContentBearingObject)
+        (containsInformation ?DOC (intendedBehavior ?PROG ?INTENDED ?AGENT))
+        (instance ?AGENT2 AutonomousAgent)
+        (not (equal ?AGENT ?AGENT2))
+        (believes ?AGENT2 (intendedBehavior ?PROG ?INTENDED2 ?AGENT))
+        (not (equal ?INTENDED ?INTENDED2)))))
   (exists (?BUG)
     (and
       (instance ?BUG InsufficientSpecificationBug)
       (bugInProgram ?BUG ?PROG ?AGENT))))
-

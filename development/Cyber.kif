@@ -557,15 +557,28 @@ exceeds the computer's rated &%computerCapacity.")
 
 ;adversarial knapsack constraint : combined resource load cannot exceed capacity
 
-;; rule: causal consequence — if a computer is over capacity,
-;; this causes a Malfunctioning process on that computer
+;; rule: causal consequence — when a computer is over capacity, the
+;; marginal process (the one that began running most recently among
+;; those currently consuming load on it) causes a Malfunctioning of
+;; the computer. Earlier-started processes were running fine before
+;; the threshold-crosser arrived, so attribution lands on the latest.
 
 (=>
   (and
     (instance ?COMP Computer)
     (attribute ?COMP OverCapacity)
     (instance ?PROC ComputerProcess)
-    (computerRunning ?PROC ?COMP))
+    (computerRunning ?PROC ?COMP)
+    (forall (?OTHER)
+      (=>
+        (and
+          (instance ?OTHER ComputerProcess)
+          (computerRunning ?OTHER ?COMP)
+          (not (equal ?OTHER ?PROC)))
+        (not
+          (before
+            (BeginFn (WhenFn ?PROC))
+            (BeginFn (WhenFn ?OTHER)))))))
   (exists (?FAIL)
     (and
       (instance ?FAIL Malfunctioning)

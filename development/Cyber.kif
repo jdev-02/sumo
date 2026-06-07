@@ -427,20 +427,41 @@ validation before deployment to production.")
 ;;the same computer cannot carry both attributes of prod/test simultaneously
 (contraryAttribute ProductionEnvironment TestEnvironment)
 
-;; rule: a test environment has no end-user processes — if a computer
-;; is a test environment, no CognitiveAgent uses it for production work
+;; endUser : CaseRole relating a Process to a CognitiveAgent who is
+;; consuming the software's delivered functionality (as opposed to
+;; developing, testing, operating, or administering it). Subrelation
+;; of agent because end-users actively invoke the process; the
+;; distinguishing commitment is that they consume the output rather
+;; than maintain the system.
+
+(instance endUser CaseRole)
+(instance endUser PartialValuedRelation)
+(domain endUser 1 Process)
+(domain endUser 2 CognitiveAgent)
+(subrelation endUser agent)
+(termFormat EnglishLanguage endUser "end user")
+(format EnglishLanguage endUser "%2 is an &%end user of %1")
+(documentation endUser EnglishLanguage "(&%endUser ?PROC ?AGENT) means
+that ?AGENT is a &%CognitiveAgent consuming the delivered output or
+functionality of ?PROC, as distinct from developers, testers, system
+operators, or administrators who also stand in &%agent relation to
+processes on the same system. The end-user role presupposes that the
+software is being run in its production-deployment mode.")
+
+;; rule: a test-environment computer hosts no end-user processes. The
+;; processes running there may have developers, QA personnel, SREs,
+;; or automated test runners as agents, but no endUser — because
+;; running test-stage software is by definition pre-production.
 
 (=>
   (and
     (instance ?COMP Computer)
-    (attribute ?COMP TestEnvironment))
+    (attribute ?COMP TestEnvironment)
+    (instance ?PROC ComputerProcess)
+    (computerRunning ?PROC ?COMP))
   (not
-    (exists (?USER ?PROC)
-      (and
-        (instance ?USER CognitiveAgent)
-        (instance ?PROC ComputerProcess)
-        (computerRunning ?PROC ?COMP)
-        (agent ?PROC ?USER)))))
+    (exists (?USER)
+      (endUser ?PROC ?USER))))
 
 ;; rule: if software runs in production, a test environment must exist
 ;; (but not vice versa — you can have test without production)

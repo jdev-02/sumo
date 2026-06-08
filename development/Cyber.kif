@@ -1679,7 +1679,39 @@ defender, W_a for the attacker. The Phase II simulation emits one
 ;;   action costs cannot exceed an agent's budget.
 ;;   Device = micro, Agent = meso.
 
-;; --- YOUR KIF GOES HERE ---
+(instance aggregateCyberCost TernaryPredicate)
+(domain aggregateCyberCost 1 AutonomousAgent)
+(domain aggregateCyberCost 2 TimeInterval)
+(domain aggregateCyberCost 3 CurrencyMeasure)
+(termFormat EnglishLanguage aggregateCyberCost "aggregate cyber cost")
+(format EnglishLanguage aggregateCyberCost "%1 has an aggregate cyber cost of %3 during %2")
+(documentation aggregateCyberCost EnglishLanguage "(&%aggregateCyberCost ?AGENT
+?T ?TOTAL) means that the sum of per-action costs (&%exploitCost for an
+attacker, &%patchCost for a defender) over the cyber actions ?AGENT has
+committed to during &%TimeInterval ?T equals ?TOTAL. The Phase II simulation
+computes this aggregate over the selected actions in a candidate strategy and
+emits one &%aggregateCyberCost fact per agent per time interval per scenario.
+Phase III consumes this fact via the knapsack constraint rule rather than
+re-deriving the sum inside the prover.")
+
+(instance violatedKnapsack RelationalAttribute)
+(termFormat EnglishLanguage violatedKnapsack "violated knapsack")
+(documentation violatedKnapsack EnglishLanguage "An &%Attribute of an
+&%AutonomousAgent indicating that the agent's &%aggregateCyberCost during a
+&%TimeInterval exceeds their &%operationalBudget for that period. The
+appearance of this attribute on an agent under a candidate strategy is the
+formal verification failure condition: Vampire derives it from the knapsack
+constraint rule, and the candidate strategy is rejected.")
+
+(=>
+  (and
+    (instance ?AGENT AutonomousAgent)
+    (operationalBudget ?AGENT ?BUDGET)
+    (instance ?T TimeInterval)
+    (aggregateCyberCost ?AGENT ?T ?TOTAL)
+    (greaterThan ?TOTAL ?BUDGET))
+  (holdsDuring ?T
+    (attribute ?AGENT violatedKnapsack)))
 
 
 
@@ -1709,7 +1741,31 @@ defender, W_a for the attacker. The Phase II simulation emits one
 ;;   Options: define a new predicate, use an existing SUMO
 ;;   attribute like Failure, or model as a result state.
 
-;; --- YOUR KIF GOES HERE ---
+(instance exploitNeutralized RelationalAttribute)
+(termFormat EnglishLanguage exploitNeutralized "exploit neutralized")
+(documentation exploitNeutralized EnglishLanguage "An &%Attribute of a
+&%CyberExploit indicating that the targeted &%Vulnerability had already been
+remediated by a &%SoftwarePatch in active operation on the patient system at
+the time of attempted exploitation. Formalizes the (1 minus zeta_i) interaction
+term in the Adversarial Knapsack: a defender's patch on vulnerability i
+nullifies the attacker's gain from exploiting i. Phase III consumes this
+attribute on candidate strategies to compute defender efficacy across the
+attacker's selected exploits.")
+
+(=>
+  (and
+    (instance ?EXPLOIT CyberExploit)
+    (targets ?EXPLOIT ?VUL)
+    (patient ?EXPLOIT ?SYSTEM)
+    (instance ?SYSTEM Computer)
+    (instance ?PATCH SoftwarePatch)
+    (patchRemediates ?PATCH ?VUL)
+    (instance ?PROC ComputerProcess)
+    (programRunning ?PROC ?PATCH)
+    (computerRunning ?PROC ?SYSTEM)
+    (holdsDuring (WhenFn ?EXPLOIT)
+      (programRunning ?PROC ?PATCH)))
+  (attribute ?EXPLOIT exploitNeutralized))
 
 
 

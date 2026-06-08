@@ -1588,7 +1588,29 @@ extract value.")
 ;;     - Per-vulnerability costs (agent-relative) and hazard
 ;;       scores (common)
 
-;; --- YOUR KIF GOES HERE ---
+(subclass AdversarialKnapsack Contest)
+(termFormat EnglishLanguage AdversarialKnapsack "adversarial knapsack")
+(documentation AdversarialKnapsack EnglishLanguage "A &%Contest between two
+&%AutonomousAgents, an attacker and a defender, who compete over a shared set
+of &%Vulnerabilities subject to per-agent resource budgets. Each agent selects
+a subset of vulnerabilities to act upon (the attacker via &%CyberExploit
+processes, the defender via deployment of a &%SoftwarePatch) to maximize
+utility without exceeding their &%operationalBudget. Formalizes the
+Adversarial Knapsack problem from arXiv 2403.10789, generalizing the
+two-agent single-round case to multi-round resource-constrained competition
+over a network of vulnerable systems.")
+
+(=>
+  (instance ?AK AdversarialKnapsack)
+  (exists (?ATTACKER ?DEFENDER ?BA ?BD)
+    (and
+      (instance ?ATTACKER AutonomousAgent)
+      (instance ?DEFENDER AutonomousAgent)
+      (not (equal ?ATTACKER ?DEFENDER))
+      (agent ?AK ?ATTACKER)
+      (agent ?AK ?DEFENDER)
+      (operationalBudget ?ATTACKER ?BA)
+      (operationalBudget ?DEFENDER ?BD))))
 
 
 
@@ -1617,7 +1639,18 @@ extract value.")
 ;;        in the current operational period.  This is the knapsack
 ;;        capacity W from Paper 02.
 
-;; --- YOUR KIF GOES HERE ---
+(instance operationalBudget BinaryPredicate)
+(instance operationalBudget AsymmetricRelation)
+(domain operationalBudget 1 AutonomousAgent)
+(domain operationalBudget 2 CurrencyMeasure)
+(termFormat EnglishLanguage operationalBudget "operational budget")
+(format EnglishLanguage operationalBudget "%1 has an &%operational budget of %2")
+(documentation operationalBudget EnglishLanguage "(&%operationalBudget ?AGENT
+?BUDGET) means that ?AGENT has a total resource budget of ?BUDGET available
+for committed cyber operations in the current operational period. This is the
+knapsack capacity W from the Adversarial Knapsack formulation: W_d for the
+defender, W_a for the attacker. The Phase II simulation emits one
+&%operationalBudget fact per agent per candidate scenario.")
 
 
 

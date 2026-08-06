@@ -474,17 +474,21 @@ utility gained by player x for a fixed round).")
         Likely))))
 
 ;; ============================================================
-;; AdversarialKnapsack (subclass of Contest)
+;; AdversarialKnapsack (subclass of ZeroSumContest)
 ;; ============================================================
 
-(subclass AdversarialKnapsack Contest)
+(subclass AdversarialKnapsack ZeroSumContest)
 (termFormat EnglishLanguage AdversarialKnapsack "adversarial knapsack")
 (documentation AdversarialKnapsack EnglishLanguage "A &%Contest between
 &%AutonomousAgents competing under resource constraints. Every
 &%AdversarialKnapsack has at least two distinct participant agents,
 and each participant has an &%operationalBudget bounding the cyber
-actions they can commit to. Formalizes the Adversarial Knapsack game
-from arXiv:2403.10789.")
+actions they can commit to. Participants are not required to hold
+equal budgets, reflecting the asymmetric resource endowments typical
+of attacker and defender roles. As a &%ZeroSumContest, one
+participant's utility gain during any interval is exactly offset by
+the other's loss. Formalizes the Adversarial Knapsack game from
+arXiv:2403.10789.")
 
 (=>
   (instance ?AK AdversarialKnapsack)
@@ -493,14 +497,14 @@ from arXiv:2403.10789.")
       (instance ?A1 AutonomousAgent)
       (instance ?A2 AutonomousAgent)
       (not (equal ?A1 ?A2))
-      (contestParticipant ?AK ?A1)
-      (contestParticipant ?AK ?A2))))
+      (agent ?AK ?A1)
+      (agent ?AK ?A2))))
 
 (=>
   (and
     (instance ?AK AdversarialKnapsack)
     (instance ?AGENT AutonomousAgent)
-    (contestParticipant ?AK ?AGENT))
+    (agent ?AK ?AGENT))
   (exists (?BUDGET)
     (operationalBudget ?AGENT ?BUDGET)))
 
@@ -510,11 +514,25 @@ from arXiv:2403.10789.")
     (instance ?A1 AutonomousAgent)
     (instance ?A2 AutonomousAgent)
     (not (equal ?A1 ?A2))
-    (contestParticipant ?AK ?A1)
-    (contestParticipant ?AK ?A2)
+    (agent ?AK ?A1)
+    (agent ?AK ?A2)
     (operationalBudget ?A1 ?B1)
     (operationalBudget ?A2 ?B2)
     (not (equal ?B1 ?B2))))
+
+(=>
+  (and
+    (instance ?AK AdversarialKnapsack)
+    (agent ?AK ?A1)
+    (agent ?AK ?A2)
+    (not (equal ?A1 ?A2))
+    (instance ?T TimeInterval))
+  (modalAttribute
+    (hasPurposeForAgent ?AK ?A1
+      (holdsDuring ?T
+        (attribute ?A2 violatedKnapsack)))
+    Likely))
+
 ;; ============================================================
 ;; exploitCost (TernaryPredicate)
 ;; ============================================================

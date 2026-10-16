@@ -1348,3 +1348,84 @@ contents.")
       (holdsDuring ?T2 (valuation ?ASSET ?V2 ?OWNER))
       (measure ?V2 ?AMOUNT2)
       (lessThan ?AMOUNT2 ?AMOUNT1))))
+
+(instance ComputerUserSupportSpecialist SkilledOccupation)
+(documentation ComputerUserSupportSpecialist EnglishLanguage "The &%SkilledOccupation
+of providing technical support to the users of computers. While a person holds
+this occupation, it is &%Likely that they are the &%serviceProvider of a
+&%ServiceProcess that is also &%Repairing a &%Computer, for a &%serviceRecipient
+who is another agent that &%uses that computer. Corresponds to occupation
+15-1232, Computer User Support Specialists, in the 2018 Standard Occupational
+Classification published by the U.S. Bureau of Labor Statistics.")
+(termFormat EnglishLanguage ComputerUserSupportSpecialist "computer user support specialist")
+
+(=>
+  (holdsDuring ?TIME
+    (attribute ?PERSON ComputerUserSupportSpecialist))
+  (modalAttribute
+    (exists (?REPAIR ?COMPUTER ?USER)
+      (and
+        (instance ?REPAIR Repairing)
+        (instance ?REPAIR ServiceProcess)
+        (serviceProvider ?REPAIR ?PERSON)
+        (serviceRecipient ?REPAIR ?USER)
+        (not
+          (equal ?USER ?PERSON))
+        (instance ?COMPUTER Computer)
+        (patient ?REPAIR ?COMPUTER)
+        (uses ?COMPUTER ?USER)
+        (temporalPart
+          (WhenFn ?REPAIR) ?TIME)))
+    Likely))
+
+(instance NetworkAndComputerSystemsAdministrator SkilledOccupation)
+(documentation NetworkAndComputerSystemsAdministrator EnglishLanguage "The
+&%SkilledOccupation of maintaining the computers of an organization. While a
+person holds this occupation, it is &%Likely that they are the &%agent of
+&%Maintaining a &%Computer that an &%Organization &%possesses. Corresponds to
+occupation 15-1244, Network and Computer Systems Administrators, in the 2018
+Standard Occupational Classification published by the U.S. Bureau of Labor
+Statistics.")
+(termFormat EnglishLanguage NetworkAndComputerSystemsAdministrator "network and computer systems administrator")
+
+(=>
+  (holdsDuring ?TIME
+    (attribute ?PERSON NetworkAndComputerSystemsAdministrator))
+  (modalAttribute
+    (exists (?MAINTAIN ?COMPUTER ?ORG)
+      (and
+        (instance ?MAINTAIN Maintaining)
+        (agent ?MAINTAIN ?PERSON)
+        (instance ?COMPUTER Computer)
+        (patient ?MAINTAIN ?COMPUTER)
+        (instance ?ORG Organization)
+        (possesses ?ORG ?COMPUTER)
+        (temporalPart
+          (WhenFn ?MAINTAIN) ?TIME)))
+    Likely))
+
+(instance InformationSecurityAnalyst SkilledOccupation)
+(documentation InformationSecurityAnalyst EnglishLanguage "The
+&%SkilledOccupation of protecting the computers of an organization against
+damage and crime. While a person holds this occupation, it is &%Likely that
+they are the &%agent of &%Protecting a &%Computer that an &%Organization
+&%possesses. Corresponds to occupation 15-1212, Information Security Analysts,
+in the 2018 Standard Occupational Classification published by the U.S. Bureau
+of Labor Statistics.")
+(termFormat EnglishLanguage InformationSecurityAnalyst "information security analyst")
+
+(=>
+  (holdsDuring ?TIME
+    (attribute ?PERSON InformationSecurityAnalyst))
+  (modalAttribute
+    (exists (?PROTECT ?COMPUTER ?ORG)
+      (and
+        (instance ?PROTECT Protecting)
+        (agent ?PROTECT ?PERSON)
+        (instance ?COMPUTER Computer)
+        (patient ?PROTECT ?COMPUTER)
+        (instance ?ORG Organization)
+        (possesses ?ORG ?COMPUTER)
+        (temporalPart
+          (WhenFn ?PROTECT) ?TIME)))
+    Likely))

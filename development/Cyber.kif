@@ -1429,3 +1429,97 @@ of Labor Statistics.")
         (temporalPart
           (WhenFn ?PROTECT) ?TIME)))
     Likely))
+
+(subclass NetworkZone RelationalAttribute)
+(documentation NetworkZone EnglishLanguage "A &%RelationalAttribute naming the
+security zone of a computer network that an &%Object is placed in.
+&%WorkstationNetworkZone, &%ServerNetworkZone, &%DMZNetworkZone and
+&%IsolatedNetworkZone are &%contraryAttributes: nothing is in more than one of
+them at a time.")
+(termFormat EnglishLanguage NetworkZone "network zone")
+
+(contraryAttribute WorkstationNetworkZone ServerNetworkZone DMZNetworkZone IsolatedNetworkZone)
+
+(instance WorkstationNetworkZone NetworkZone)
+(documentation WorkstationNetworkZone EnglishLanguage "The &%NetworkZone called the
+workstation zone. It is &%Likely that a &%Computer in this zone is one that a
+&%Human or an &%ArtificialIntelligenceAgent &%uses.")
+(termFormat EnglishLanguage WorkstationNetworkZone "workstation network zone")
+
+(=>
+  (and
+    (attribute ?COMPUTER WorkstationNetworkZone)
+    (instance ?COMPUTER Computer))
+  (modalAttribute
+    (exists (?USER)
+      (and
+        (uses ?COMPUTER ?USER)
+        (or
+          (instance ?USER Human)
+          (instance ?USER ArtificialIntelligenceAgent))))
+    Likely))
+
+(instance ServerNetworkZone NetworkZone)
+(documentation ServerNetworkZone EnglishLanguage "The &%NetworkZone called the server
+zone. It is &%Likely that a &%Computer in this zone is one that two or more
+different agents &%use.")
+(termFormat EnglishLanguage ServerNetworkZone "server network zone")
+
+(=>
+  (and
+    (attribute ?COMPUTER ServerNetworkZone)
+    (instance ?COMPUTER Computer))
+  (modalAttribute
+    (exists (?USER1 ?USER2)
+      (and
+        (uses ?COMPUTER ?USER1)
+        (uses ?COMPUTER ?USER2)
+        (not
+          (equal ?USER1 ?USER2))))
+    Likely))
+
+(instance DMZNetworkZone NetworkZone)
+(documentation DMZNetworkZone EnglishLanguage "The &%NetworkZone called the
+demilitarized zone, or DMZ. When an &%Organization &%possesses a &%Computer in
+this zone, it is &%Likely that some agent that is neither a &%member of that
+&%Organization nor an agent whose &%operator is that &%Organization &%uses the
+computer.")
+(termFormat EnglishLanguage DMZNetworkZone "DMZ network zone")
+
+(=>
+  (and
+    (attribute ?COMPUTER DMZNetworkZone)
+    (instance ?COMPUTER Computer)
+    (instance ?ORG Organization)
+    (possesses ?ORG ?COMPUTER))
+  (modalAttribute
+    (exists (?USER)
+      (and
+        (uses ?COMPUTER ?USER)
+        (not
+          (member ?USER ?ORG))
+        (not
+          (operator ?USER ?ORG))))
+    Likely))
+
+(instance IsolatedNetworkZone NetworkZone)
+(documentation IsolatedNetworkZone EnglishLanguage "The &%NetworkZone called the
+isolated zone. When an &%Organization &%possesses a &%Computer in this zone, it
+is &%Likely that every agent that &%uses the computer is either a &%member of
+that &%Organization or an agent whose &%operator is that &%Organization.")
+(termFormat EnglishLanguage IsolatedNetworkZone "isolated network zone")
+
+(=>
+  (and
+    (attribute ?COMPUTER IsolatedNetworkZone)
+    (instance ?COMPUTER Computer)
+    (instance ?ORG Organization)
+    (possesses ?ORG ?COMPUTER))
+  (modalAttribute
+    (forall (?USER)
+      (=>
+        (uses ?COMPUTER ?USER)
+        (or
+          (member ?USER ?ORG)
+          (operator ?USER ?ORG))))
+    Likely))

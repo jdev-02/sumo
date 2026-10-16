@@ -1,0 +1,14 @@
+;; The four NetworkZone instances are contraryAttributes, so an Object
+;; placed in the isolated network zone is not also in the workstation
+;; network zone.
+(note CYB01_network_zone_contrary)
+(category general)
+(time 300)
+(file Cyber.kif)
+
+(instance Host1 Object)
+(attribute Host1 IsolatedNetworkZone)
+
+(query (not (attribute Host1 WorkstationNetworkZone)))
+
+(answer yes)

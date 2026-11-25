@@ -1,0 +1,10 @@
+;; Two unchanged taxonomy formulas from the pinned SUMO source.
+;; Merge.kif: ordinary instance inheritance.
+(=>
+  (and
+    (subclass ?X ?Y)
+    (instance ?Z ?X))
+  (instance ?Z ?Y))
+
+;; ComputingBrands.kif: upgrade is a kind of installation.
+(subclass SoftwareUpgrading SoftwareInstallation)

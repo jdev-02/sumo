@@ -1,0 +1,32 @@
+;; Test-local vocabulary for a synthetic applicability criterion.
+;; rmActiveBuild: host, component, snapshot, environment, build.
+(instance rmActiveBuild QuintaryPredicate)
+;; Build criteria: vulnerability, component, environment, build.
+(instance rmAffectedBuild QuaternaryPredicate)
+(instance rmFixedBuild QuaternaryPredicate)
+;; rmAffectedAt: vulnerability, host, component, snapshot.
+(instance rmAffectedAt QuaternaryPredicate)
+
+(=>
+  (and
+    (rmActiveBuild ?HOST ?COMPONENT ?SNAPSHOT ?ENV ?BUILD)
+    (rmAffectedBuild ?VULN ?COMPONENT ?ENV ?BUILD))
+  (rmAffectedAt ?VULN ?HOST ?COMPONENT ?SNAPSHOT))
+
+(=>
+  (and
+    (rmActiveBuild ?HOST ?COMPONENT ?SNAPSHOT ?ENV ?BUILD)
+    (rmFixedBuild ?VULN ?COMPONENT ?ENV ?BUILD))
+  (not
+    (rmAffectedAt ?VULN ?HOST ?COMPONENT ?SNAPSHOT)))
+
+;; Recorded interval for the named installation.
+(instance rmInstallationInterval BinaryPredicate)
+
+;; Expected digests: patch, path, old digest, new digest.
+(instance hdExpectedDigests QuaternaryPredicate)
+;; Observed digest: host, path, interval, digest.
+(instance hdObservedDigest QuaternaryPredicate)
+
+;; Patch manifest links a patch to the inspected component and target path.
+(instance pcPatchComponentFile TernaryPredicate)
